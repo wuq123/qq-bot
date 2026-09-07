@@ -10,13 +10,38 @@
 
 ## 安装运行
 
-```bash
-pip install -r requirements.txt
+Windows PowerShell：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 copy .env.example .env
-python main.py
+.\.venv\Scripts\python.exe main.py
 ```
 
 运行前需要在 `.env` 中填入 QQ 开放平台的 `AppID` 和 `AppSecret`。
+
+已创建 `.venv` 和 `.env` 时，后续直接启动：
+
+```powershell
+// 方式一
+.\.venv\Scripts\python.exe main.py
+
+// 方式二
+.venv\Scripts\activate
+python main.py
+```
+
+`.env` 配置示例：
+
+```text
+QQBOT_APP_ID=你的AppID
+QQBOT_APP_SECRET=你的AppSecret
+QQBOT_SANDBOX=true
+QQBOT_FAQ_PATH=config/faq.yaml
+```
+
+沙箱测试阶段保持 `QQBOT_SANDBOX=true`，正式环境改为 `false`。
 
 ## FAQ 配置
 
