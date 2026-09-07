@@ -1,0 +1,22 @@
+fallback_answer: "暂时没有找到合适答案。你可以输入“帮助”查看可提问的问题。"
+empty_answer: "请发送具体问题，我会尽量回答。"
+help_answer: "你可以问：你能做什么、如何接入LLM、如何修改FAQ。"
+items:
+  - question: "你能做什么"
+    keywords:
+      - "功能"
+      - "帮助"
+      - "能做什么"
+    answer: "我可以根据本地FAQ回答问题，后续也可以接入LLM提供更灵活的问答能力。"
+  - question: "如何接入LLM"
+    keywords:
+      - "LLM"
+      - "大模型"
+      - "接入模型"
+    answer: "可以新增一个实现 AnswerProvider 的 LLM Provider，在 main.py 中替换当前 FAQ Provider。"
+  - question: "如何修改FAQ"
+    keywords:
+      - "FAQ"
+      - "配置"
+      - "修改问题"
+    answer: "编辑 config/faq.yaml，新增 question、keywords 和 answer 后重启机器人即可。"
