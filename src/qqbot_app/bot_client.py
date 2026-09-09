@@ -22,12 +22,32 @@ class QQQuestionAnswerBot(botpy.Client):
     async def on_c2c_message_create(self, message: Any) -> None:
         await self._answer_and_reply(message, "c2c_message")
 
+    async def on_direct_message_create(self, message: Any) -> None:
+        await self._answer_and_reply(message, "direct_message")
+
     async def on_group_at_message_create(self, message: Any) -> None:
         await self._answer_and_reply(message, "group_at_message")
+
+    async def on_friend_add(self, event: Any) -> None:
+        user_id = _extract_user_id(event)
+        print(f"bot debug: event_type=friend_add user_id={user_id}", flush=True)
+        logger.info("friend add: user_id=%s", user_id)
+
+    async def on_c2c_msg_receive(self, event: Any) -> None:
+        user_id = _extract_user_id(event)
+        print(f"bot debug: event_type=c2c_msg_receive user_id={user_id}", flush=True)
+        logger.info("c2c msg receive: user_id=%s", user_id)
+
+    async def on_c2c_msg_reject(self, event: Any) -> None:
+        user_id = _extract_user_id(event)
+        print(f"bot debug: event_type=c2c_msg_reject user_id={user_id}", flush=True)
+        logger.info("c2c msg reject: user_id=%s", user_id)
 
     async def _answer_and_reply(self, message: Any, event_type: str) -> None:
         text = str(getattr(message, "content", "") or "")
         user_id = _extract_user_id(message)
+        print(f"bot debug: event_type={event_type} user_id={user_id}", flush=True)
+        logger.info("received message: event_type=%s user_id=%s", event_type, user_id)
         context = AnswerContext(event_type=event_type, raw_event=message)
         answer = self._answer_provider.answer(user_id=user_id, text=text, context=context)
         await _send_reply(message, event_type, answer)
@@ -62,7 +82,9 @@ def _extract_user_id(message: Any) -> str:
     for value in (
         getattr(author, "id", None),
         getattr(author, "user_openid", None),
+        getattr(author, "member_openid", None),
         getattr(message, "user_openid", None),
+        getattr(message, "member_openid", None),
         getattr(message, "openid", None),
     ):
         if value:

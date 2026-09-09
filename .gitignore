@@ -3,4 +3,4 @@
 __pycache__/
 .pytest_cache/
 *.pyc
-botpy.log
+botpy.log*
