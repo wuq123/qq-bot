@@ -3,8 +3,9 @@ from typing import Any, Optional
 
 from qqbot_app.auth_service import AuthCommand, AuthService, parse_auth_command
 from qqbot_app.coc_service import CocCommand, CocService, parse_coc_command
+from qqbot_app.help_service import HelpService
 from qqbot_app.note_service import NoteService, parse_note_command
-from qqbot_app.providers.base import AnswerContext, AnswerProvider
+from qqbot_app.providers.base import AnswerContext, AnswerProvider, BotAnswer
 
 
 class ChatAnswerProvider(AnswerProvider):
@@ -13,6 +14,7 @@ class ChatAnswerProvider(AnswerProvider):
         faq_provider: AnswerProvider,
         note_root: str,
         auth_service: AuthService,
+        help_service: Optional[HelpService] = None,
         coc_api_token: str = "",
         coc_translations_path: str = "",
         coc_service: Optional[Any] = None,
@@ -20,9 +22,10 @@ class ChatAnswerProvider(AnswerProvider):
         self._faq_provider = faq_provider
         self._note_service = NoteService(Path(note_root)) if note_root else None
         self._auth_service = auth_service
+        self._help_service = help_service
         self._coc_service = coc_service or CocService(coc_api_token, coc_translations_path)
 
-    def answer(self, user_id: str, text: str, context: AnswerContext) -> str:
+    def answer(self, user_id: str, text: str, context: AnswerContext) -> BotAnswer:
         auth_command = parse_auth_command(text)
         if auth_command is not None:
             return self._handle_auth_command(user_id, auth_command, context)
@@ -31,10 +34,14 @@ class ChatAnswerProvider(AnswerProvider):
         if coc_command is not None:
             return self._handle_coc_command(user_id, coc_command)
 
-        command = parse_note_command(text)
-        if command is None:
+        note_command = parse_note_command(text)
+        if note_command is None:
+            help_answer = self._help_service.answer(text) if self._help_service else None
+            if help_answer is not None:
+                return help_answer
             return self._faq_provider.answer(user_id, text, context)
 
+        command = note_command
         if command.action == "invalid":
             return "笔记命令格式不正确。请发送：新增笔记 标题：Git 内容：这里是内容，或：查看笔记：Git。"
         if not self._auth_service.can_use(user_id, "notes"):

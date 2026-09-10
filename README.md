@@ -39,6 +39,7 @@ QQBOT_APP_ID=你的AppID
 QQBOT_APP_SECRET=你的AppSecret
 QQBOT_SANDBOX=true
 QQBOT_FAQ_PATH=config/faq.yaml
+HELP_CONFIG_PATH=config/help.yaml
 NOTE_ROOT=C:\Users\test\Desktop\study\study
 AUTH_CONFIG_PATH=config/auth.yaml
 BOT_OWNER_USER_IDS=user_id_1,user_id_2
@@ -48,6 +49,25 @@ COC_TRANSLATIONS_PATH=config/coc_translations.yaml
 ```
 
 沙箱测试阶段保持 `QQBOT_SANDBOX=true`，正式环境改为 `false`。
+
+## 帮助菜单
+
+发送：
+
+```text
+帮助
+```
+
+机器人会返回带 QQ 指令按钮的功能列表。点击“笔记”“部落冲突”“权限”“FAQ”会自动发送对应帮助命令：
+
+```text
+帮助 笔记
+帮助 部落冲突
+帮助 权限
+帮助 FAQ
+```
+
+如果当前 QQ 场景不支持 markdown 或按钮，机器人会降级为纯文本帮助，仍可手动输入上面的命令。
 
 ## FAQ 配置
 
@@ -64,12 +84,14 @@ COC_TRANSLATIONS_PATH=config/coc_translations.yaml
 新增笔记：
 
 ```text
+新笔记：Git 这里是笔记内容
 新增笔记 标题：Git 内容：这里是笔记内容
 ```
 
 修改笔记：
 
 ```text
+改笔记：Git 这里是追加内容
 修改笔记 标题：Git 内容：这里是追加内容
 ```
 
@@ -84,6 +106,7 @@ COC_TRANSLATIONS_PATH=config/coc_translations.yaml
 查看笔记内容：
 
 ```text
+看笔记：Git
 查看笔记：Git
 ```
 
@@ -100,6 +123,7 @@ COC_API_TOKEN=你的部落冲突API Token
 查询玩家：
 
 ```text
+玩家：#ABC123
 查询玩家：#ABC123
 查看玩家：#ABC123
 部落冲突玩家：#ABC123
@@ -123,13 +147,19 @@ Clash of Clans 官方 API 当前不返回建筑列表、建筑等级或升级结
 其他查询：
 
 ```text
+部落战：#CLAN1
 查询部落战：#CLAN1
+都城：#CLAN1
 查询都城突袭：#CLAN1
+战斗日志：#PLAYER1
 查询玩家战斗日志：#PLAYER1
+联赛历史：#PLAYER1
 查询玩家联赛历史：#PLAYER1
 ```
 
 列表类结果默认只展示最近几条，避免 QQ 单条回复过长。
+
+如果 `查询部落战：#CLAN1` 返回 API 拒绝访问，先确认 `COC_API_TOKEN` 和服务器公网 IP 白名单正确；如果玩家查询、都城突袭等其他接口正常，通常是目标部落在游戏内关闭了公开战争日志，官方 `currentwar` 接口不会返回战争详情。
 
 部落冲突查询需要“部落冲突”功能权限：
 
@@ -149,7 +179,14 @@ FEATURE_NAMES_PATH=config/features.yaml
 
 多个用户 ID 使用英文逗号分隔。机器人从 QQ 消息事件中读取用户 ID/openid；普通 QQ 号通常不是这里要填的值。
 
-启动后收到消息时，控制台会打印：
+启动后控制台应先打印：
+
+```text
+bot debug: starting sandbox=true intents=...
+bot debug: ready robot=...
+```
+
+收到消息时，控制台会打印：
 
 ```text
 bot debug: event_type=c2c_message user_id=xxx
@@ -162,6 +199,14 @@ bot debug: event_type=c2c_message user_id=xxx
 ```
 
 把这里的 `xxx` 填入 `BOT_OWNER_USER_IDS` 作为初始所有者。如果私发消息没有任何打印，请确认 QQ 开放平台已开启 C2C/私信消息事件权限，并在修改代码后重启 `main.py`。
+
+群聊 @ 机器人没有回应时，先确认已经打印 `ready`，再看控制台是否打印：
+
+```text
+bot debug: event_type=group_at_message user_id=xxx
+```
+
+如果没有打印 `ready`，说明程序没有建立有效 WebSocket 连接，先检查 AppID/AppSecret、网络和沙箱配置。如果已打印 `ready` 但没有 `group_at_message`，说明群聊 @ 事件没有下发到程序，重点检查 QQ 开放平台是否开启群/C2C 公域消息事件、机器人是否已加入当前群、当前机器人使用范围是否允许该群、沙箱环境是否包含当前群成员。部分 QQ 客户端还需要群主在群机器人设置中允许机器人接收群消息；如果打印了 `group_msg_reject`，说明群聊拒绝机器人主动消息，需要在 QQ 侧重新允许接收机器人消息。
 
 所有者可以在 QQ 会话中设置任意功能权限：
 
@@ -210,7 +255,7 @@ features:
 
 ## 后续接入 LLM
 
-QQ 消息事件处理层只依赖 `AnswerProvider.answer(user_id, text, context) -> str`。后续接入 LLM 时，新增一个 Provider 实现并在 `main.py` 中替换即可，不需要改事件处理逻辑。
+QQ 消息事件处理层只依赖 `AnswerProvider.answer(user_id, text, context)`，返回普通字符串或 `BotMessage` 富消息。后续接入 LLM 时，新增一个 Provider 实现并在 `main.py` 中替换即可，不需要改事件处理逻辑。
 
 ## 测试
 

@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 
 from qqbot_app.auth_service import AuthService, FeatureNames
-from qqbot_app.providers import AnswerContext, ChatAnswerProvider
+from qqbot_app.help_service import HelpService
+from qqbot_app.providers import AnswerContext, BotMessage, ChatAnswerProvider
 from qqbot_app.qa_service import FaqAnswerProvider, FaqItem
 
 
@@ -55,6 +56,16 @@ def _provider_with_auth(tmp_path: Path, auth_service: AuthService) -> ChatAnswer
     )
 
 
+def _provider_with_help(tmp_path: Path, auth_service: AuthService) -> ChatAnswerProvider:
+    return ChatAnswerProvider(
+        faq_provider=_faq_provider(),
+        note_root=str(tmp_path),
+        auth_service=auth_service,
+        help_service=HelpService.from_file(Path("config/help.yaml")),
+        coc_service=_FakeCocService(),
+    )
+
+
 def test_note_command_has_priority(tmp_path: Path) -> None:
     provider = _provider(tmp_path)
 
@@ -70,6 +81,26 @@ def test_non_note_message_falls_back_to_faq(tmp_path: Path) -> None:
     answer = provider.answer("u1", "你能做什么", _context())
 
     assert answer == "功能回答"
+
+
+def test_help_command_returns_rich_message(tmp_path: Path) -> None:
+    provider = _provider_with_help(tmp_path, AuthService(tmp_path / "auth.yaml"))
+
+    answer = provider.answer("u1", "帮助", _context())
+
+    assert isinstance(answer, BotMessage)
+    assert "帮助 笔记" in answer.content
+
+
+def test_help_command_does_not_override_business_command(tmp_path: Path) -> None:
+    (tmp_path / "Git.md").write_text("Git 内容", encoding="utf-8")
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"])
+    auth_service.grant("owner-1", "u1", "notes", "user")
+    provider = _provider_with_help(tmp_path, auth_service)
+
+    answer = provider.answer("u1", "笔记列表", _context())
+
+    assert answer == "现有笔记：\n- Git"
 
 
 def test_invalid_note_command_returns_format_tip(tmp_path: Path) -> None:
@@ -107,11 +138,37 @@ def test_read_note_command(tmp_path: Path) -> None:
     assert answer == "Git.md：\nGit 内容"
 
 
+def test_short_read_note_command(tmp_path: Path) -> None:
+    (tmp_path / "Git.md").write_text("Git 内容", encoding="utf-8")
+    provider = _provider(tmp_path)
+
+    answer = provider.answer("u1", "看笔记：Git", _context())
+
+    assert answer == "Git.md：\nGit 内容"
+
+
+def test_short_create_note_command(tmp_path: Path) -> None:
+    provider = _provider(tmp_path)
+
+    answer = provider.answer("u1", "新笔记：Git 笔记内容", _context())
+
+    assert answer == "已新增笔记：Git.md"
+
+
 def test_append_note_command_allowed_for_notes_user(tmp_path: Path) -> None:
     (tmp_path / "Git.md").write_text("旧内容", encoding="utf-8")
     provider = _provider(tmp_path)
 
     answer = provider.answer("u1", "修改笔记 标题：Git 内容：追加内容", _context())
+
+    assert answer == "已追加到笔记：Git.md"
+
+
+def test_short_append_note_command_allowed_for_notes_user(tmp_path: Path) -> None:
+    (tmp_path / "Git.md").write_text("旧内容", encoding="utf-8")
+    provider = _provider(tmp_path)
+
+    answer = provider.answer("u1", "改笔记：Git 追加内容", _context())
 
     assert answer == "已追加到笔记：Git.md"
 
@@ -185,6 +242,16 @@ def test_clash_command_allowed_for_clash_user(tmp_path: Path) -> None:
     provider = _provider_with_auth(tmp_path, auth_service)
 
     answer = provider.answer("u1", "查询玩家：#ABC123", _context())
+
+    assert answer == "玩家查询结果：#ABC123"
+
+
+def test_short_clash_command_allowed_for_clash_user(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"])
+    auth_service.grant("owner-1", "u1", "clash", "user")
+    provider = _provider_with_auth(tmp_path, auth_service)
+
+    answer = provider.answer("u1", "玩家：#ABC123", _context())
 
     assert answer == "玩家查询结果：#ABC123"
 

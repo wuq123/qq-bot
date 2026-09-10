@@ -61,9 +61,13 @@ def test_parse_building_time_command() -> None:
     ("text", "action"),
     [
         ("查询部落战：#CLAN1", "clan_war"),
+        ("部落战：#CLAN1", "clan_war"),
         ("查询都城突袭：#CLAN1", "capital_raid"),
+        ("都城：#CLAN1", "capital_raid"),
         ("查询玩家战斗日志：#PLAYER1", "battlelog"),
+        ("战斗日志：#PLAYER1", "battlelog"),
         ("查询玩家联赛历史：#PLAYER1", "league_history"),
+        ("联赛历史：#PLAYER1", "league_history"),
     ],
 )
 def test_parse_extra_coc_commands(text: str, action: str) -> None:
@@ -78,6 +82,14 @@ def test_parse_invalid_coc_command() -> None:
 
     assert command is not None
     assert command.action == "invalid"
+
+
+def test_parse_short_player_command() -> None:
+    command = parse_coc_command("玩家：#ABC123")
+
+    assert command is not None
+    assert command.action == "player"
+    assert command.player_tag == "#ABC123"
 
 
 def test_parse_invalid_building_time_command() -> None:
@@ -208,6 +220,18 @@ def test_get_player_summary_http_errors(monkeypatch: pytest.MonkeyPatch, status:
     answer = CocService("token").get_player_summary("#ABC")
 
     assert expected in answer
+
+
+def test_get_clan_war_summary_forbidden_mentions_private_war_log(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_urlopen(req: request.Request, timeout: int) -> _Response:
+        raise error.HTTPError(req.full_url, 403, "error", {}, BytesIO())
+
+    monkeypatch.setattr("qqbot_app.coc_service.request.urlopen", fake_urlopen)
+
+    answer = CocService("token").get_clan_war_summary("#CLAN")
+
+    assert "部落战 API 拒绝访问" in answer
+    assert "公开战争日志" in answer
 
 
 def test_get_player_summary_network_error(monkeypatch: pytest.MonkeyPatch) -> None:

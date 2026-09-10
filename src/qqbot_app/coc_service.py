@@ -42,6 +42,7 @@ class CocService:
             "部落标签",
             lambda tag: f"/clans/{_encode_tag(tag)}/currentwar",
             format_clan_war_summary,
+            "clan_war",
         )
 
     def get_capital_raid_summary(self, clan_tag: str) -> str:
@@ -75,7 +76,7 @@ class CocService:
             return str(exc)
         return "暂时无法查询建筑剩余时间：Clash of Clans 官方 API 不返回建筑列表、建筑等级或升级结束时间。"
 
-    def _query_tag_resource(self, tag: str, tag_name: str, path_builder: Any, formatter: Any) -> str:
+    def _query_tag_resource(self, tag: str, tag_name: str, path_builder: Any, formatter: Any, error_context: str = "") -> str:
         if not self._api_token:
             return "未配置 COC_API_TOKEN，暂时无法查询部落冲突数据。"
 
@@ -85,7 +86,7 @@ class CocService:
         except ValueError as exc:
             return str(exc)
         except error.HTTPError as exc:
-            return _format_http_error(exc)
+            return _format_http_error(exc, error_context)
         except (error.URLError, TimeoutError):
             return "查询部落冲突数据失败，请检查网络或稍后重试。"
         return formatter(data)
@@ -106,21 +107,21 @@ class CocService:
 
 def parse_coc_command(text: str) -> Optional[CocCommand]:
     value = _strip_mention(text)
-    clan_war_match = re.match(r"^查询部落战[:：]\s*(.+)$", value)
+    clan_war_match = re.match(r"^(查询部落战|部落战)[:：]\s*(.+)$", value)
     if clan_war_match:
-        return CocCommand(action="clan_war", player_tag=clan_war_match.group(1).strip())
+        return CocCommand(action="clan_war", player_tag=clan_war_match.group(2).strip())
 
-    capital_raid_match = re.match(r"^查询都城突袭[:：]\s*(.+)$", value)
+    capital_raid_match = re.match(r"^(查询都城突袭|都城)[:：]\s*(.+)$", value)
     if capital_raid_match:
-        return CocCommand(action="capital_raid", player_tag=capital_raid_match.group(1).strip())
+        return CocCommand(action="capital_raid", player_tag=capital_raid_match.group(2).strip())
 
-    battlelog_match = re.match(r"^查询玩家战斗日志[:：]\s*(.+)$", value)
+    battlelog_match = re.match(r"^(查询玩家战斗日志|战斗日志)[:：]\s*(.+)$", value)
     if battlelog_match:
-        return CocCommand(action="battlelog", player_tag=battlelog_match.group(1).strip())
+        return CocCommand(action="battlelog", player_tag=battlelog_match.group(2).strip())
 
-    league_history_match = re.match(r"^查询玩家联赛历史[:：]\s*(.+)$", value)
+    league_history_match = re.match(r"^(查询玩家联赛历史|联赛历史)[:：]\s*(.+)$", value)
     if league_history_match:
-        return CocCommand(action="league_history", player_tag=league_history_match.group(1).strip())
+        return CocCommand(action="league_history", player_tag=league_history_match.group(2).strip())
 
     building_match = re.match(r"^(查询建筑剩余时间|查看建筑剩余时间|查询玩家建筑剩余时间|查看玩家建筑剩余时间)[:：]\s*(.+)$", value)
     if building_match:
@@ -128,10 +129,25 @@ def parse_coc_command(text: str) -> Optional[CocCommand]:
     if value.startswith(("查询建筑剩余时间", "查看建筑剩余时间", "查询玩家建筑剩余时间", "查看玩家建筑剩余时间")):
         return CocCommand(action="invalid", player_tag="")
 
-    match = re.match(r"^(查询玩家|查看玩家|部落冲突玩家)[:：]\s*(.+)$", value)
+    match = re.match(r"^(查询玩家|查看玩家|部落冲突玩家|玩家)[:：]\s*(.+)$", value)
     if match:
         return CocCommand(action="player", player_tag=match.group(2).strip())
-    if value.startswith(("查询部落战", "查询都城突袭", "查询玩家战斗日志", "查询玩家联赛历史", "查询玩家", "查看玩家", "部落冲突玩家")):
+    if value.startswith(
+        (
+            "查询部落战",
+            "部落战",
+            "查询都城突袭",
+            "都城",
+            "查询玩家战斗日志",
+            "战斗日志",
+            "查询玩家联赛历史",
+            "联赛历史",
+            "查询玩家",
+            "查看玩家",
+            "部落冲突玩家",
+            "玩家",
+        )
+    ):
         return CocCommand(action="invalid", player_tag="")
     return None
 
@@ -323,8 +339,10 @@ def _percent(value: Any) -> str:
     return f"{value}%"
 
 
-def _format_http_error(exc: error.HTTPError) -> str:
+def _format_http_error(exc: error.HTTPError, error_context: str = "") -> str:
     if exc.code == 403:
+        if error_context == "clan_war":
+            return "部落战 API 拒绝访问：请检查 COC_API_TOKEN 和服务器 IP 白名单；如果其他部落冲突查询正常，通常是该部落在游戏内关闭了公开战争日志。"
         return "部落冲突 API 拒绝访问，请检查 COC_API_TOKEN 或服务器 IP 白名单。"
     if exc.code == 404:
         return "未找到该部落冲突玩家，请检查玩家标签。"

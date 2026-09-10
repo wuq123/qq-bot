@@ -129,6 +129,32 @@ def test_parse_read_command() -> None:
     assert command.title == "Git"
 
 
+def test_parse_short_read_command() -> None:
+    command = parse_note_command("看笔记：Git")
+
+    assert command is not None
+    assert command.action == "read"
+    assert command.title == "Git"
+
+
+def test_parse_short_create_command() -> None:
+    command = parse_note_command("新笔记：Git 这里是内容")
+
+    assert command is not None
+    assert command.action == "create"
+    assert command.title == "Git"
+    assert command.content == "这里是内容"
+
+
+def test_parse_short_append_command() -> None:
+    command = parse_note_command("改笔记：Git 追加内容")
+
+    assert command is not None
+    assert command.action == "append"
+    assert command.title == "Git"
+    assert command.content == "追加内容"
+
+
 def test_parse_legacy_read_command() -> None:
     command = parse_note_command("查看笔记 标题：Git")
 

@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Protocol
 
+from qqbot_app.bot_message import BotAnswer
+
 
 @dataclass(frozen=True)
 class AnswerContext:
@@ -10,6 +12,6 @@ class AnswerContext:
 
 
 class AnswerProvider(Protocol):
-    def answer(self, user_id: str, text: str, context: AnswerContext) -> str:
+    def answer(self, user_id: str, text: str, context: AnswerContext) -> BotAnswer:
         """返回用户问题答案"""
         ...

@@ -1,0 +1,114 @@
+title: "功能帮助"
+features:
+  - key: "notes"
+    title: "笔记"
+    aliases:
+      - "notes"
+      - "笔记功能"
+    summary: "通过 QQ 会话新增、追加、列出、查看 NOTE_ROOT 下的 Markdown 笔记。"
+    requirements:
+      - "需要拥有笔记功能的 owner、admin 或 user 身份。"
+      - "需要在 .env 配置 NOTE_ROOT，机器人进程需要有该目录写入权限。"
+    commands:
+      - "笔记列表"
+      - "看笔记：Git"
+      - "新笔记：Git 这里是笔记内容"
+      - "改笔记：Git 这里是追加内容"
+      - "新增笔记 标题：Git 内容：这里是笔记内容"
+      - "修改笔记 标题：Git 内容：这里是追加内容"
+    buttons:
+      - label: "笔记列表"
+        command: "笔记列表"
+      - label: "看笔记"
+        command: "看笔记："
+        enter: false
+      - label: "新笔记"
+        command: "新笔记："
+        enter: false
+      - label: "改笔记"
+        command: "改笔记："
+        enter: false
+  - key: "clash"
+    title: "部落冲突"
+    aliases:
+      - "clash"
+      - "COC"
+      - "部落冲突查询"
+    summary: "查询 Clash of Clans 玩家、部落战、都城突袭、战斗日志和联赛历史。"
+    requirements:
+      - "需要拥有部落冲突功能的 owner、admin 或 user 身份。"
+      - "需要配置 COC_API_TOKEN，并在开发者后台加入机器人服务器公网 IP。"
+      - "官方 API 不返回建筑升级剩余时间。"
+    commands:
+      - "玩家：#TAG"
+      - "部落战：#TAG"
+      - "都城：#TAG"
+      - "战斗日志：#TAG"
+      - "联赛历史：#TAG"
+      - "查询建筑剩余时间：#TAG"
+    buttons:
+      - label: "查玩家"
+        command: "玩家："
+        enter: false
+      - label: "部落战"
+        command: "部落战："
+        enter: false
+      - label: "都城"
+        command: "都城："
+        enter: false
+      - label: "战斗日志"
+        command: "战斗日志："
+        enter: false
+      - label: "联赛历史"
+        command: "联赛历史："
+        enter: false
+  - key: "auth"
+    title: "权限"
+    aliases:
+      - "身份权限"
+      - "授权"
+      - "auth"
+    summary: "机器人按 owner、admin、user、guest 四层身份控制不同功能。"
+    requirements:
+      - "初始 owner 通过 .env 的 BOT_OWNER_USER_IDS 配置。"
+      - "QQ 会话默认使用中文功能名，例如 笔记、部落冲突。"
+    commands:
+      - "查看我的ID"
+      - "查看权限"
+      - "查看权限 用户：user_openid"
+      - "设置权限 用户：user_openid 功能：笔记 身份：user"
+      - "@机器人 提升笔记权限 @某某"
+    buttons:
+      - label: "我的ID"
+        command: "查看我的ID"
+      - label: "查看权限"
+        command: "查看权限"
+      - label: "设笔记权限"
+        command: "设置权限 用户："
+        enter: false
+      - label: "设COC权限"
+        command: "设置权限 用户："
+        enter: false
+  - key: "faq"
+    title: "FAQ"
+    aliases:
+      - "问答"
+      - "常见问题"
+    summary: "本地 FAQ 用于回答配置、功能说明和常见问题。"
+    requirements:
+      - "FAQ 不需要功能权限。"
+      - "编辑 config/faq.yaml 后重启机器人即可更新。"
+    commands:
+      - "如何新增笔记"
+      - "如何查询部落冲突玩家"
+      - "身份权限"
+      - "如何设置权限"
+    buttons:
+      - label: "新增笔记"
+        command: "如何新增笔记"
+      - label: "查玩家"
+        command: "如何查询部落冲突玩家"
+      - label: "身份权限"
+        command: "身份权限"
+      - label: "设置权限"
+        command: "如何设置权限"

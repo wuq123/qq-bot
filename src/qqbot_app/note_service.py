@@ -67,7 +67,7 @@ def parse_note_command(text: str) -> Optional[NoteCommand]:
     if value in {"笔记列表", "查询笔记列表", "查看笔记列表", "列出笔记"}:
         return NoteCommand(action="list", title="", content="")
 
-    read_pattern = r"^(查看笔记|查询笔记|查看笔记内容|查询笔记内容|笔记内容)[:：]\s*(.+)$"
+    read_pattern = r"^(查看笔记|查询笔记|查看笔记内容|查询笔记内容|笔记内容|看笔记)[:：]\s*(.+)$"
     read_match = re.match(read_pattern, value, flags=re.DOTALL)
     if read_match:
         return NoteCommand(action="read", title=read_match.group(2).strip(), content="")
@@ -77,7 +77,15 @@ def parse_note_command(text: str) -> Optional[NoteCommand]:
     if legacy_read_match:
         return NoteCommand(action="read", title=legacy_read_match.group(2).strip(), content="")
 
-    if re.match(r"^(查看笔记|查询笔记|查看笔记内容|查询笔记内容|笔记内容)\b", value):
+    if value.startswith(("查看笔记", "查询笔记", "查看笔记内容", "查询笔记内容", "笔记内容", "看笔记")):
+        return NoteCommand(action="invalid", title="", content="")
+
+    shortcut_match = re.match(r"^(新笔记|改笔记)[:：]\s*(\S+)\s+(.+)$", value, flags=re.DOTALL)
+    if shortcut_match:
+        action_text, title, content = shortcut_match.groups()
+        action = "create" if action_text == "新笔记" else "append"
+        return NoteCommand(action=action, title=title.strip(), content=content.strip())
+    if value.startswith(("新笔记", "改笔记")):
         return NoteCommand(action="invalid", title="", content="")
 
     pattern = r"^(新增笔记|创建笔记|修改笔记|追加笔记)\s+标题[:：]\s*(.+?)\s+内容[:：]\s*(.+)$"
