@@ -1,6 +1,6 @@
 fallback_answer: "暂时没有找到合适答案。你可以输入“帮助”查看可提问的问题。"
 empty_answer: "请发送具体问题，我会尽量回答。"
-help_answer: "你可以问：如何新增笔记、如何修改笔记、如何查询笔记列表、如何查看笔记内容、身份权限、查看我的ID、如何设置权限。"
+help_answer: "你可以问：如何新增笔记、如何修改笔记、如何查询笔记列表、如何查看笔记内容、如何查询部落冲突玩家、如何查询部落战、如何查询都城突袭、身份权限、查看我的ID、如何设置权限、如何提升权限。"
 items:
   - question: "如何修改FAQ"
     keywords:
@@ -43,7 +43,7 @@ items:
       - "权限"
       - "身份验证"
       - "用户校验"
-    answer: "机器人使用四层身份权限：owner、admin、user、guest。初始 owner 在 .env 的 BOT_OWNER_USER_IDS 中配置，功能权限会保存到 AUTH_CONFIG_PATH 指向的 YAML 文件。"
+    answer: "机器人使用四层身份权限：owner、admin、user、guest。初始 owner 在 .env 的 BOT_OWNER_USER_IDS 中配置，功能权限会保存到 AUTH_CONFIG_PATH 指向的 YAML 文件；QQ 会话默认用中文功能名。"
   - question: "身份权限"
     keywords:
       - "四层权限"
@@ -61,4 +61,54 @@ items:
       - "设置权限"
       - "提升权限"
       - "授权"
-    answer: "发送：设置权限 用户：user_openid 功能：notes 身份：user。owner 可设置任意身份；admin 只能在对应功能内设置 user 或 guest。"
+    answer: "发送：设置权限 用户：user_openid 功能：笔记 身份：user，或设置权限 用户：user_openid 功能：部落冲突 身份：user。owner 可设置任意身份；admin 只能在对应功能内设置 user 或 guest。"
+  - question: "如何提升权限"
+    keywords:
+      - "提升权限"
+      - "提升笔记权限"
+      - "提升部落冲突权限"
+    answer: "群聊发送：@机器人 提升笔记权限 @某某，或 @机器人 提升部落冲突权限 @某某。每次只提升一层，最高只能提升到发起人身份的下一层。"
+  - question: "查询功能列表"
+    keywords:
+      - "功能列表"
+      - "功能翻译"
+      - "FEATURE_NAMES_PATH"
+    answer: "功能中文名维护在 FEATURE_NAMES_PATH 指向的 YAML 文件中，默认 config/features.yaml。例如 notes 对应笔记，clash 对应部落冲突；QQ 会话默认使用中文名。"
+  - question: "如何查询部落冲突玩家"
+    keywords:
+      - "部落冲突"
+      - "查询玩家"
+      - "查看玩家"
+      - "clash"
+      - "COC"
+    answer: "发送：查询玩家：#ABC123。机器人会查询玩家名、等级、大本营、奖杯、战争星数、部落、捐收兵、英雄、法术、兵种和英雄装备数据；该功能需要部落冲突权限。"
+  - question: "如何查询部落战"
+    keywords:
+      - "部落战"
+      - "当前战争"
+      - "查询部落战"
+    answer: "发送：查询部落战：#CLAN1。机器人会返回当前部落战状态、规模、时间、双方星数、摧毁率和进攻次数；该功能需要部落冲突权限。"
+  - question: "如何查询都城突袭"
+    keywords:
+      - "都城突袭"
+      - "突袭周末"
+      - "查询都城"
+    answer: "发送：查询都城突袭：#CLAN1。机器人会返回最近都城突袭赛季状态、时间、都城金币、完成突袭、总进攻次数和参与成员数。"
+  - question: "如何查询玩家战斗日志"
+    keywords:
+      - "战斗日志"
+      - "玩家战斗日志"
+      - "battlelog"
+    answer: "发送：查询玩家战斗日志：#PLAYER1。机器人默认展示最近 5 条战斗记录。"
+  - question: "如何查询玩家联赛历史"
+    keywords:
+      - "联赛历史"
+      - "玩家联赛历史"
+      - "leaguehistory"
+    answer: "发送：查询玩家联赛历史：#PLAYER1。机器人默认展示最近 5 条联赛历史记录。"
+  - question: "能否查询建筑剩余时间"
+    keywords:
+      - "建筑剩余时间"
+      - "升级剩余时间"
+      - "建筑升级"
+    answer: "可以发送：查询建筑剩余时间：#ABC123。但 Clash of Clans 官方 API 当前不返回建筑列表、建筑等级或升级结束时间，机器人只能返回该限制说明，不能给出真实剩余时间。"

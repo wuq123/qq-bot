@@ -7,6 +7,8 @@ import yaml
 
 ROLES = {"owner", "admin", "user", "guest"}
 USABLE_ROLES = {"owner", "admin", "user"}
+ROLE_RANKS = {"guest": 0, "user": 1, "admin": 2, "owner": 3}
+RANK_ROLES = {value: key for key, value in ROLE_RANKS.items()}
 
 
 @dataclass(frozen=True)
@@ -17,11 +19,33 @@ class AuthCommand:
     role: str
 
 
+class FeatureNames:
+    def __init__(self, names: Dict[str, str]) -> None:
+        self._names = names
+        self._feature_by_name = {display_name: feature for feature, display_name in names.items()}
+
+    @classmethod
+    def from_file(cls, path: Path) -> "FeatureNames":
+        if not path.exists():
+            return cls({})
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        features = data.get("features", {}) or {}
+        return cls({str(feature): str(display_name) for feature, display_name in features.items()})
+
+    def resolve(self, value: str) -> str:
+        text = value.strip()
+        return self._feature_by_name.get(text, text)
+
+    def display(self, feature: str) -> str:
+        return self._names.get(feature, feature)
+
+
 class AuthService:
-    def __init__(self, path: Path, owner_user_ids: Iterable[str] = ()) -> None:
+    def __init__(self, path: Path, owner_user_ids: Iterable[str] = (), feature_names: Optional[FeatureNames] = None) -> None:
         self._path = path
         self._owners: Set[str] = set()
         self._features: Dict[str, Dict[str, str]] = {}
+        self._feature_names = feature_names or FeatureNames({})
         self._load()
         original_owners = set(self._owners)
         self._owners.update(user_id.strip() for user_id in owner_user_ids if user_id.strip())
@@ -43,7 +67,7 @@ class AuthService:
 
     def grant(self, actor_user_id: str, target_user_id: str, feature: str, role: str) -> str:
         target_user_id = target_user_id.strip()
-        feature = feature.strip()
+        feature = self._feature_names.resolve(feature)
         role = role.strip().lower()
         if actor_user_id == "unknown":
             return "无法识别用户身份，已拒绝权限操作。"
@@ -58,12 +82,39 @@ class AuthService:
         if actor_role == "owner":
             self._set_role(target_user_id, feature, role)
             self.save()
-            return f"已设置用户 {target_user_id} 在 {feature} 功能的身份为 {role}。"
+            return f"已设置用户 {target_user_id} 在 {self._feature_names.display(feature)} 功能的身份为 {role}。"
         if actor_role == "admin" and role in {"user", "guest"}:
             self._set_role(target_user_id, feature, role)
             self.save()
-            return f"已设置用户 {target_user_id} 在 {feature} 功能的身份为 {role}。"
+            return f"已设置用户 {target_user_id} 在 {self._feature_names.display(feature)} 功能的身份为 {role}。"
         return "你没有权限设置该功能权限。"
+
+    def promote(self, actor_user_id: str, target_user_id: str, feature: str) -> str:
+        feature = self._feature_names.resolve(feature)
+        feature_name = self._feature_names.display(feature)
+        if actor_user_id == "unknown":
+            return "无法识别用户身份，已拒绝权限操作。"
+        if not target_user_id:
+            return "请 @ 需要提升权限的用户。"
+        if actor_user_id == target_user_id:
+            return "不能提升自己的权限。"
+
+        actor_role = self.get_role(actor_user_id, feature)
+        actor_rank = ROLE_RANKS[actor_role]
+        max_target_rank = actor_rank - 1
+        if max_target_rank < ROLE_RANKS["user"]:
+            return "你没有权限提升该功能权限。"
+
+        target_role = self.get_role(target_user_id, feature)
+        target_rank = ROLE_RANKS[target_role]
+        next_rank = target_rank + 1
+        if next_rank > max_target_rank:
+            return f"用户 {target_user_id} 在 {feature_name} 功能已达到你可提升的最高身份。"
+
+        next_role = RANK_ROLES[next_rank]
+        self._set_role(target_user_id, feature, next_role)
+        self.save()
+        return f"已将用户 {target_user_id} 在 {feature_name} 功能的身份提升为 {next_role}。"
 
     def describe(self, user_id: str) -> str:
         if user_id == "unknown":
@@ -79,7 +130,7 @@ class AuthService:
         for feature, users in sorted(self._features.items()):
             role = users.get(user_id)
             if role:
-                feature_lines.append(f"- {feature}: {role}")
+                feature_lines.append(f"- {self._feature_names.display(feature)}: {role}")
         if not feature_lines:
             feature_lines.append("- 无（默认 guest）")
         lines.append("全局身份：无")
@@ -142,7 +193,11 @@ def parse_auth_command(text: str) -> Optional[AuthCommand]:
         target_user_id, feature, role = grant_match.groups()
         return AuthCommand(action="grant", target_user_id=target_user_id, feature=feature, role=role)
 
-    if value.startswith(("设置权限", "查看权限")):
+    promote_match = re.match(r"^提升(.+?)权限$", value)
+    if promote_match:
+        return AuthCommand(action="promote", target_user_id="", feature=promote_match.group(1).strip(), role="")
+
+    if value.startswith(("设置权限", "查看权限", "提升")):
         return AuthCommand(action="invalid", target_user_id="", feature="", role="")
     return None
 
@@ -150,4 +205,5 @@ def parse_auth_command(text: str) -> Optional[AuthCommand]:
 def _strip_mention(text: str) -> str:
     value = str(text or "")
     value = re.sub(r"<@!?\d+>", "", value)
+    value = re.sub(r"@\S+", "", value)
     return value.strip()

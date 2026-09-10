@@ -12,6 +12,9 @@ class BotConfig:
     note_root: str
     auth_config_path: str
     bot_owner_user_ids: List[str]
+    feature_names_path: str
+    coc_api_token: str
+    coc_translations_path: str
 
     @classmethod
     def from_env(cls) -> "BotConfig":
@@ -22,6 +25,9 @@ class BotConfig:
         note_root = os.getenv("NOTE_ROOT", "").strip()
         auth_config_path = os.getenv("AUTH_CONFIG_PATH", "config/auth.yaml").strip()
         bot_owner_user_ids = _parse_csv(os.getenv("BOT_OWNER_USER_IDS", ""))
+        feature_names_path = os.getenv("FEATURE_NAMES_PATH", "config/features.yaml").strip()
+        coc_api_token = os.getenv("COC_API_TOKEN", "").strip()
+        coc_translations_path = os.getenv("COC_TRANSLATIONS_PATH", "config/coc_translations.yaml").strip()
 
         missing = []
         if not app_id:
@@ -39,6 +45,9 @@ class BotConfig:
             note_root=note_root,
             auth_config_path=auth_config_path,
             bot_owner_user_ids=bot_owner_user_ids,
+            feature_names_path=feature_names_path,
+            coc_api_token=coc_api_token,
+            coc_translations_path=coc_translations_path,
         )
 
 

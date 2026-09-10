@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 import botpy
 from dotenv import load_dotenv
 
-from qqbot_app.auth_service import AuthService
+from qqbot_app.auth_service import AuthService, FeatureNames
 from qqbot_app.bot_client import QQQuestionAnswerBot
 from qqbot_app.config import BotConfig
 from qqbot_app.providers import ChatAnswerProvider
@@ -27,11 +27,14 @@ def main() -> None:
     load_dotenv()
     config = BotConfig.from_env()
     faq_provider = FaqAnswerProvider.from_file(Path(config.faq_path))
-    auth_service = AuthService(Path(config.auth_config_path), config.bot_owner_user_ids)
+    feature_names = FeatureNames.from_file(Path(config.feature_names_path))
+    auth_service = AuthService(Path(config.auth_config_path), config.bot_owner_user_ids, feature_names)
     provider = ChatAnswerProvider(
         faq_provider=faq_provider,
         note_root=config.note_root,
         auth_service=auth_service,
+        coc_api_token=config.coc_api_token,
+        coc_translations_path=config.coc_translations_path,
     )
     client = QQQuestionAnswerBot(provider, intents=create_intents(), is_sandbox=config.sandbox)
     client.run(appid=config.app_id, secret=config.app_secret)

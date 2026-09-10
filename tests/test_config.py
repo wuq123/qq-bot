@@ -11,6 +11,9 @@ def test_load_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NOTE_ROOT", "C:\\notes")
     monkeypatch.setenv("AUTH_CONFIG_PATH", "config/custom-auth.yaml")
     monkeypatch.setenv("BOT_OWNER_USER_IDS", "u1, u2, ,u3")
+    monkeypatch.setenv("FEATURE_NAMES_PATH", "config/custom-features.yaml")
+    monkeypatch.setenv("COC_API_TOKEN", "coc-token")
+    monkeypatch.setenv("COC_TRANSLATIONS_PATH", "config/custom-coc.yaml")
 
     config = BotConfig.from_env()
 
@@ -21,6 +24,9 @@ def test_load_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.note_root == "C:\\notes"
     assert config.auth_config_path == "config/custom-auth.yaml"
     assert config.bot_owner_user_ids == ["u1", "u2", "u3"]
+    assert config.feature_names_path == "config/custom-features.yaml"
+    assert config.coc_api_token == "coc-token"
+    assert config.coc_translations_path == "config/custom-coc.yaml"
 
 
 def test_empty_bot_owner_user_ids(monkeypatch: pytest.MonkeyPatch) -> None:

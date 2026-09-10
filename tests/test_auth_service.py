@@ -2,7 +2,7 @@ from pathlib import Path
 
 import yaml
 
-from qqbot_app.auth_service import AuthService, parse_auth_command
+from qqbot_app.auth_service import AuthService, FeatureNames, parse_auth_command
 
 
 def test_owner_user_ids_initialize_and_persist(tmp_path: Path) -> None:
@@ -87,3 +87,53 @@ def test_parse_auth_commands() -> None:
     assert describe.target_user_id == "u1"
     assert me is not None
     assert me.action == "me"
+
+
+def test_feature_names_translate_chinese_feature(tmp_path: Path) -> None:
+    path = tmp_path / "features.yaml"
+    path.write_text("features:\n  notes: 笔记\n  clash: 部落冲突\n", encoding="utf-8")
+    names = FeatureNames.from_file(path)
+
+    assert names.resolve("笔记") == "notes"
+    assert names.resolve("部落冲突") == "clash"
+    assert names.display("notes") == "笔记"
+
+
+def test_parse_promote_auth_command_with_mentions() -> None:
+    command = parse_auth_command("@机器人 提升笔记权限 @某某")
+
+    assert command is not None
+    assert command.action == "promote"
+    assert command.feature == "笔记"
+
+
+def test_owner_promotes_one_level_below_actor(tmp_path: Path) -> None:
+    service = AuthService(tmp_path / "auth.yaml", ["owner-1"], FeatureNames({"notes": "笔记"}))
+
+    first = service.promote("owner-1", "u1", "笔记")
+    second = service.promote("owner-1", "u1", "笔记")
+    third = service.promote("owner-1", "u1", "笔记")
+
+    assert first == "已将用户 u1 在 笔记 功能的身份提升为 user。"
+    assert second == "已将用户 u1 在 笔记 功能的身份提升为 admin。"
+    assert third == "用户 u1 在 笔记 功能已达到你可提升的最高身份。"
+    assert service.get_role("u1", "notes") == "admin"
+
+
+def test_admin_promotes_only_to_user(tmp_path: Path) -> None:
+    service = AuthService(tmp_path / "auth.yaml", ["owner-1"], FeatureNames({"notes": "笔记"}))
+    service.grant("owner-1", "admin-1", "笔记", "admin")
+
+    first = service.promote("admin-1", "u1", "笔记")
+    second = service.promote("admin-1", "u1", "笔记")
+
+    assert first == "已将用户 u1 在 笔记 功能的身份提升为 user。"
+    assert second == "用户 u1 在 笔记 功能已达到你可提升的最高身份。"
+    assert service.get_role("u1", "notes") == "user"
+
+
+def test_user_cannot_promote(tmp_path: Path) -> None:
+    service = AuthService(tmp_path / "auth.yaml", ["owner-1"], FeatureNames({"notes": "笔记"}))
+    service.grant("owner-1", "user-1", "笔记", "user")
+
+    assert service.promote("user-1", "u1", "笔记") == "你没有权限提升该功能权限。"

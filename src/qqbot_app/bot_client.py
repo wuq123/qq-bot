@@ -48,7 +48,7 @@ class QQQuestionAnswerBot(botpy.Client):
         user_id = _extract_user_id(message)
         print(f"bot debug: event_type={event_type} user_id={user_id}", flush=True)
         logger.info("received message: event_type=%s user_id=%s", event_type, user_id)
-        context = AnswerContext(event_type=event_type, raw_event=message)
+        context = AnswerContext(event_type=event_type, raw_event=message, extra={"mention_user_ids": _extract_mention_user_ids(message)})
         answer = self._answer_provider.answer(user_id=user_id, text=text, context=context)
         await _send_reply(message, event_type, answer)
 
@@ -90,6 +90,21 @@ def _extract_user_id(message: Any) -> str:
         if value:
             return str(value)
     return "unknown"
+
+
+def _extract_mention_user_ids(message: Any) -> list[str]:
+    result = []
+    for mention in getattr(message, "mentions", []) or []:
+        for value in (
+            getattr(mention, "id", None),
+            getattr(mention, "user_openid", None),
+            getattr(mention, "member_openid", None),
+            getattr(mention, "openid", None),
+        ):
+            if value:
+                result.append(str(value))
+                break
+    return result
 
 
 def _extract_openid(message: Any) -> str:

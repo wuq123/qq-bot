@@ -1,8 +1,30 @@
 from pathlib import Path
 
-from qqbot_app.auth_service import AuthService
+import pytest
+
+from qqbot_app.auth_service import AuthService, FeatureNames
 from qqbot_app.providers import AnswerContext, ChatAnswerProvider
 from qqbot_app.qa_service import FaqAnswerProvider, FaqItem
+
+
+class _FakeCocService:
+    def get_player_summary(self, player_tag: str) -> str:
+        return f"玩家查询结果：{player_tag}"
+
+    def get_building_time_summary(self, player_tag: str) -> str:
+        return f"建筑剩余时间查询结果：{player_tag}"
+
+    def get_clan_war_summary(self, clan_tag: str) -> str:
+        return f"部落战查询结果：{clan_tag}"
+
+    def get_capital_raid_summary(self, clan_tag: str) -> str:
+        return f"都城突袭查询结果：{clan_tag}"
+
+    def get_player_battlelog_summary(self, player_tag: str) -> str:
+        return f"战斗日志查询结果：{player_tag}"
+
+    def get_player_league_history_summary(self, player_tag: str) -> str:
+        return f"联赛历史查询结果：{player_tag}"
 
 
 def _faq_provider() -> FaqAnswerProvider:
@@ -25,7 +47,12 @@ def _provider(tmp_path: Path) -> ChatAnswerProvider:
 
 
 def _provider_with_auth(tmp_path: Path, auth_service: AuthService) -> ChatAnswerProvider:
-    return ChatAnswerProvider(faq_provider=_faq_provider(), note_root=str(tmp_path), auth_service=auth_service)
+    return ChatAnswerProvider(
+        faq_provider=_faq_provider(),
+        note_root=str(tmp_path),
+        auth_service=auth_service,
+        coc_service=_FakeCocService(),
+    )
 
 
 def test_note_command_has_priority(tmp_path: Path) -> None:
@@ -150,3 +177,121 @@ def test_view_my_id(tmp_path: Path) -> None:
     answer = provider.answer("u1", "查看我的ID", _context())
 
     assert answer == "当前用户ID：u1"
+
+
+def test_clash_command_allowed_for_clash_user(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"])
+    auth_service.grant("owner-1", "u1", "clash", "user")
+    provider = _provider_with_auth(tmp_path, auth_service)
+
+    answer = provider.answer("u1", "查询玩家：#ABC123", _context())
+
+    assert answer == "玩家查询结果：#ABC123"
+
+
+def test_clash_command_rejects_guest_user(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"])
+    auth_service.grant("owner-1", "u1", "clash", "guest")
+    provider = _provider_with_auth(tmp_path, auth_service)
+
+    answer = provider.answer("u1", "查询玩家：#ABC123", _context())
+
+    assert answer == "你没有权限使用部落冲突查询功能。"
+
+
+def test_invalid_clash_command_returns_format_tip(tmp_path: Path) -> None:
+    provider = _provider(tmp_path)
+
+    answer = provider.answer("u1", "查询玩家 #ABC123", _context())
+
+    assert "部落冲突命令格式不正确" in answer
+
+
+def test_owner_can_grant_clash_permission(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"])
+    provider = _provider_with_auth(tmp_path, auth_service)
+
+    answer = provider.answer("owner-1", "设置权限 用户：u1 功能：clash 身份：user", _context())
+
+    assert answer == "已设置用户 u1 在 clash 功能的身份为 user。"
+    assert auth_service.get_role("u1", "clash") == "user"
+
+
+def test_clash_building_time_command_allowed_for_clash_user(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"])
+    auth_service.grant("owner-1", "u1", "clash", "user")
+    provider = _provider_with_auth(tmp_path, auth_service)
+
+    answer = provider.answer("u1", "查询建筑剩余时间：#ABC123", _context())
+
+    assert answer == "建筑剩余时间查询结果：#ABC123"
+
+
+def test_clash_building_time_command_rejects_guest_user(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"])
+    auth_service.grant("owner-1", "u1", "clash", "guest")
+    provider = _provider_with_auth(tmp_path, auth_service)
+
+    answer = provider.answer("u1", "查询建筑剩余时间：#ABC123", _context())
+
+    assert answer == "你没有权限使用部落冲突查询功能。"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("查询部落战：#CLAN1", "部落战查询结果：#CLAN1"),
+        ("查询都城突袭：#CLAN1", "都城突袭查询结果：#CLAN1"),
+        ("查询玩家战斗日志：#PLAYER1", "战斗日志查询结果：#PLAYER1"),
+        ("查询玩家联赛历史：#PLAYER1", "联赛历史查询结果：#PLAYER1"),
+    ],
+)
+def test_extra_clash_commands_allowed_for_clash_user(tmp_path: Path, text: str, expected: str) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"])
+    auth_service.grant("owner-1", "u1", "clash", "user")
+    provider = _provider_with_auth(tmp_path, auth_service)
+
+    answer = provider.answer("u1", text, _context())
+
+    assert answer == expected
+
+
+def test_group_promote_note_permission_uses_target_mention(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"], FeatureNames({"notes": "笔记"}))
+    provider = _provider_with_auth(tmp_path, auth_service)
+    context = AnswerContext(event_type="group_at_message", extra={"mention_user_ids": ["bot-id", "u1"]})
+
+    answer = provider.answer("owner-1", "@机器人 提升笔记权限 @某某", context)
+
+    assert answer == "已将用户 u1 在 笔记 功能的身份提升为 user。"
+    assert auth_service.get_role("u1", "notes") == "user"
+
+
+def test_group_promote_uses_last_non_actor_mention(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"], FeatureNames({"notes": "笔记"}))
+    provider = _provider_with_auth(tmp_path, auth_service)
+    context = AnswerContext(event_type="group_at_message", extra={"mention_user_ids": ["bot-id", "owner-1", "u1"]})
+
+    answer = provider.answer("owner-1", "提升笔记权限 @某某", context)
+
+    assert answer == "已将用户 u1 在 笔记 功能的身份提升为 user。"
+
+
+def test_promote_permission_requires_group_chat(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"], FeatureNames({"notes": "笔记"}))
+    provider = _provider_with_auth(tmp_path, auth_service)
+    context = AnswerContext(event_type="c2c_message", extra={"mention_user_ids": ["u1"]})
+
+    answer = provider.answer("owner-1", "提升笔记权限 @某某", context)
+
+    assert answer == "提升权限只能在群聊中使用。"
+
+
+def test_promote_permission_requires_target_mention(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"], FeatureNames({"notes": "笔记"}))
+    provider = _provider_with_auth(tmp_path, auth_service)
+    context = AnswerContext(event_type="group_at_message", extra={"mention_user_ids": ["owner-1"]})
+
+    answer = provider.answer("owner-1", "提升笔记权限", context)
+
+    assert answer == "请 @ 需要提升权限的用户。"
