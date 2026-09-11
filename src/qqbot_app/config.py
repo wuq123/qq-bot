@@ -18,6 +18,8 @@ class BotConfig:
     coc_translations_path: str
     wuwa_data_dir: str
     wuwa_timeout: int
+    llm_config_path: str
+    onebot_config_path: str
 
     @classmethod
     def from_env(cls) -> "BotConfig":
@@ -34,6 +36,8 @@ class BotConfig:
         coc_translations_path = os.getenv("COC_TRANSLATIONS_PATH", "config/coc_translations.yaml").strip()
         wuwa_data_dir = os.getenv("WUWA_DATA_DIR", "data/wuwa").strip()
         wuwa_timeout = _parse_int(os.getenv("WUWA_TIMEOUT", "10"), 10)
+        llm_config_path = os.getenv("LLM_CONFIG_PATH", "config/llm.yaml").strip()
+        onebot_config_path = os.getenv("ONEBOT_CONFIG_PATH", "config/onebot.yaml").strip()
 
         missing = []
         if not app_id:
@@ -57,6 +61,8 @@ class BotConfig:
             coc_translations_path=coc_translations_path,
             wuwa_data_dir=wuwa_data_dir,
             wuwa_timeout=wuwa_timeout,
+            llm_config_path=llm_config_path,
+            onebot_config_path=onebot_config_path,
         )
 
 

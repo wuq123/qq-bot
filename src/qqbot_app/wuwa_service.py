@@ -246,7 +246,7 @@ class WuwaService:
     def _binding_error(self, user_id: str, need_role: bool) -> str:
         binding = self._load_binding(user_id)
         if not binding.get("token"):
-            return "未绑定鸣潮 Token。请先发送：绑定鸣潮Token：<库街区token>。"
+            return "未绑定鸣潮 Token。请先私聊发送：鸣潮登录：<手机号>，或：绑定鸣潮Token：<库街区token>。"
         if need_role and not binding.get("role_id"):
             return "未绑定鸣潮角色。请先发送：绑定鸣潮角色：<role_id>。"
         return ""
@@ -523,7 +523,7 @@ def _text_card_message(title: str, summary: str) -> BotAnswer:
 
 def _character_card_message(summary: str, data: Dict[str, Any]) -> BotAnswer:
     try:
-        return BotMessage(content=summary, image=render_character_card(data))
+        return BotMessage(content=summary, image=render_character_card(data), image_only=True)
     except Exception:
         return summary
 

@@ -498,3 +498,13 @@ def test_promote_permission_requires_target_mention(tmp_path: Path) -> None:
     answer = provider.answer("owner-1", "提升笔记权限", context)
 
     assert answer == "请 @ 需要提升权限的用户。"
+
+
+def test_natural_language_wuwa_credentials_do_not_reach_faq(tmp_path: Path) -> None:
+    auth_service = AuthService(tmp_path / "auth.yaml", ["owner-1"])
+    provider = _provider_with_auth(tmp_path, auth_service)
+
+    answer = provider.answer("u1", "请用手机号 13800138000 登录鸣潮", AnswerContext(event_type="c2c_message"))
+
+    assert "仅支持私聊固定格式" in answer
+    assert "鸣潮登录：<手机号>" in answer

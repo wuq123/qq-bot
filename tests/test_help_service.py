@@ -20,7 +20,8 @@ def test_help_feature_returns_detail_and_short_commands() -> None:
     answer = HelpService.from_file(Path("config/help.yaml")).answer("帮助 部落冲突")
 
     assert isinstance(answer, BotMessage)
-    assert "COC_API_TOKEN" in answer.content
+    assert "需求：" not in answer.content
+    assert "COC_API_TOKEN" not in answer.content
     assert "玩家：#TAG" in answer.content
     assert answer.keyboard is not None
     action = answer.keyboard["content"]["rows"][0]["buttons"][0]["action"]

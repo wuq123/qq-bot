@@ -17,6 +17,8 @@ def test_load_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COC_TRANSLATIONS_PATH", "config/custom-coc.yaml")
     monkeypatch.setenv("WUWA_DATA_DIR", "data/custom-wuwa")
     monkeypatch.setenv("WUWA_TIMEOUT", "15")
+    monkeypatch.setenv("LLM_CONFIG_PATH", "config/custom-llm.yaml")
+    monkeypatch.setenv("ONEBOT_CONFIG_PATH", "config/custom-onebot.yaml")
 
     config = BotConfig.from_env()
 
@@ -33,6 +35,8 @@ def test_load_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.coc_translations_path == "config/custom-coc.yaml"
     assert config.wuwa_data_dir == "data/custom-wuwa"
     assert config.wuwa_timeout == 15
+    assert config.llm_config_path == "config/custom-llm.yaml"
+    assert config.onebot_config_path == "config/custom-onebot.yaml"
 
 
 def test_empty_bot_owner_user_ids(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -43,6 +47,8 @@ def test_empty_bot_owner_user_ids(monkeypatch: pytest.MonkeyPatch) -> None:
     config = BotConfig.from_env()
 
     assert config.bot_owner_user_ids == []
+    assert config.llm_config_path == "config/llm.yaml"
+    assert config.onebot_config_path == "config/onebot.yaml"
 
 
 def test_missing_credentials_have_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:

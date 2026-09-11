@@ -5,7 +5,7 @@ from typing import Any, List, Optional
 
 import yaml
 
-from qqbot_app.providers import AnswerContext, AnswerProvider
+from qqbot_app.providers.base import AnswerContext, AnswerProvider, BotAnswer
 
 
 @dataclass(frozen=True)
@@ -22,14 +22,20 @@ class FaqAnswerProvider(AnswerProvider):
         fallback_answer: str,
         empty_answer: str,
         help_answer: Optional[str] = None,
+        fallback_provider: Optional[AnswerProvider] = None,
     ) -> None:
         self._items = items
         self._fallback_answer = fallback_answer
         self._empty_answer = empty_answer
         self._help_answer = help_answer
+        self._fallback_provider = fallback_provider
 
     @classmethod
-    def from_file(cls, path: Path) -> "FaqAnswerProvider":
+    def from_file(
+        cls,
+        path: Path,
+        fallback_provider: Optional[AnswerProvider] = None,
+    ) -> "FaqAnswerProvider":
         if not path.exists():
             raise FileNotFoundError(f"FAQ 配置文件不存在: {path}")
 
@@ -42,9 +48,10 @@ class FaqAnswerProvider(AnswerProvider):
             fallback_answer=str(data.get("fallback_answer", "暂时没有找到合适答案。你可以输入“帮助”查看可提问的问题。")),
             empty_answer=str(data.get("empty_answer", "请发送具体问题，我会尽量回答。")),
             help_answer=data.get("help_answer"),
+            fallback_provider=fallback_provider,
         )
 
-    def answer(self, user_id: str, text: str, context: AnswerContext) -> str:
+    def answer(self, user_id: str, text: str, context: AnswerContext) -> BotAnswer:
         normalized_text = _normalize_text(text)
         if not normalized_text:
             return self._empty_answer
@@ -62,6 +69,8 @@ class FaqAnswerProvider(AnswerProvider):
                 if _normalize_text(keyword).lower() in lowered_text:
                     return item.answer
 
+        if self._fallback_provider is not None:
+            return self._fallback_provider.answer(user_id, normalized_text, context)
         return self._fallback_answer
 
     def _build_help_answer(self) -> str:
@@ -83,5 +92,5 @@ def _parse_faq_item(item: dict[str, Any]) -> FaqItem:
 
 def _normalize_text(text: str) -> str:
     value = str(text or "")
-    value = re.sub(r"<@!?\d+>", "", value)
+    value = re.sub(r"<@!?[^>]+>", "", value)
     return value.strip()

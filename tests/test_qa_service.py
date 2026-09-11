@@ -6,6 +6,15 @@ from qqbot_app.providers import AnswerContext
 from qqbot_app.qa_service import FaqAnswerProvider, FaqItem
 
 
+class _FallbackProvider:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def answer(self, user_id: str, text: str, context: AnswerContext) -> str:
+        self.calls.append((user_id, text, context))
+        return f"LLM：{text}"
+
+
 def _provider() -> FaqAnswerProvider:
     return FaqAnswerProvider(
         fallback_answer="兜底回答",
@@ -55,3 +64,31 @@ def test_load_faq_from_file() -> None:
 def test_missing_faq_file_has_clear_error() -> None:
     with pytest.raises(FileNotFoundError, match="FAQ 配置文件不存在"):
         FaqAnswerProvider.from_file(Path("config/missing.yaml"))
+
+
+def test_faq_miss_uses_fallback_provider() -> None:
+    fallback = _FallbackProvider()
+    provider = FaqAnswerProvider(
+        fallback_answer="兜底回答",
+        empty_answer="空消息回答",
+        items=[FaqItem(question="你能做什么", keywords=["功能"], answer="功能回答")],
+        fallback_provider=fallback,
+    )
+
+    answer = provider.answer("u1", "<@!123456> 未知问题", _context())
+
+    assert answer == "LLM：未知问题"
+    assert fallback.calls == [("u1", "未知问题", _context())]
+
+
+def test_faq_match_does_not_use_fallback_provider() -> None:
+    fallback = _FallbackProvider()
+    provider = FaqAnswerProvider(
+        fallback_answer="兜底回答",
+        empty_answer="空消息回答",
+        items=[FaqItem(question="你能做什么", keywords=["功能"], answer="功能回答")],
+        fallback_provider=fallback,
+    )
+
+    assert provider.answer("u1", "介绍一下功能", _context()) == "功能回答"
+    assert fallback.calls == []

@@ -64,9 +64,6 @@ class HelpService:
         lines = [feature.title]
         if feature.summary:
             lines.append(feature.summary)
-        if feature.requirements:
-            lines.append("需求：")
-            lines.extend(f"- {item}" for item in feature.requirements)
         if feature.commands:
             lines.append("触发方式：")
             lines.extend(f"- {item}" for item in feature.commands)

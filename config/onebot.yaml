@@ -1,0 +1,7 @@
+enabled: false
+ws_url: ws://127.0.0.1:3001
+access_token_env: ONEBOT_ACCESS_TOKEN
+reply_probability: 0.2
+context_messages: 5
+max_message_chars: 500
+reconnect_delay: 5

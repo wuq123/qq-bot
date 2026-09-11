@@ -67,7 +67,14 @@ class QQQuestionAnswerBot(botpy.Client):
         user_id = _extract_user_id(message)
         print(f"bot debug: event_type={event_type} user_id={user_id}", flush=True)
         logger.info("received message: event_type=%s user_id=%s", event_type, user_id)
-        context = AnswerContext(event_type=event_type, raw_event=message, extra={"mention_user_ids": _extract_mention_user_ids(message)})
+        context = AnswerContext(
+            event_type=event_type,
+            raw_event=message,
+            extra={
+                "mention_user_ids": _extract_mention_user_ids(message),
+                "conversation_id": _extract_conversation_id(message, event_type),
+            },
+        )
         answer = self._answer_provider.answer(user_id=user_id, text=text, context=context)
         logger.info("answer generated: event_type=%s answer_type=%s", event_type, type(answer).__name__)
         await _send_reply(message, event_type, answer)
@@ -94,11 +101,12 @@ async def _send_reply(message: Any, event_type: str, answer: BotAnswer) -> None:
 
 
 async def _send_image_reply(message: Any, event_type: str, answer: BotMessage) -> None:
+    content = {} if answer.image_only else {"content": answer.content}
     if event_type not in {"c2c_message", "group_at_message"}:
-        await _send_payload(message, event_type, {"content": answer.content, "file_image": answer.image})
+        await _send_payload(message, event_type, {**content, "file_image": answer.image})
         return
     media = await _upload_image(message, event_type, answer.image)
-    await _send_payload(message, event_type, {"content": answer.content, "msg_type": 7, "media": media})
+    await _send_payload(message, event_type, {**content, "msg_type": 7, "media": media})
 
 
 async def _upload_image(message: Any, event_type: str, image: bytes) -> Any:
@@ -212,3 +220,17 @@ def _extract_openid(message: Any) -> str:
         if value:
             return str(value)
     raise RuntimeError("无法从 C2C 消息中读取用户 openid")
+
+
+def _extract_conversation_id(message: Any, event_type: str) -> str:
+    author = getattr(message, "author", None)
+    for prefix, value in (
+        ("group", getattr(message, "group_openid", None)),
+        ("channel", getattr(message, "channel_id", None)),
+        ("guild", getattr(message, "guild_id", None)),
+        ("user", getattr(message, "user_openid", None)),
+        ("user", getattr(author, "user_openid", None)),
+    ):
+        if value:
+            return f"{prefix}:{value}"
+    return event_type

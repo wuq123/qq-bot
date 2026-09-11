@@ -10,6 +10,7 @@ from qqbot_app.providers import BotMessage
 from qqbot_app.wuwa_service import (
     WUWA_CN_SERVER_ID,
     WuwaService,
+    _character_card_message,
     format_character_summary,
     format_gacha_analysis,
     format_profile_summary,
@@ -210,6 +211,7 @@ def test_fetch_profile_formats_widget_data(tmp_path: Path, monkeypatch: pytest.M
     assert "昵称：漂泊者" in answer.content
     assert "结晶波片：120/240" in answer.content
     assert answer.image.startswith(b"\x89PNG")
+    assert answer.image_only is False
 
 
 def test_character_query_fetches_detail_with_character_id(
@@ -273,6 +275,16 @@ def test_character_query_fetches_detail_with_character_id(
     assert isinstance(answer, BotMessage)
     assert "鸣潮练度：今汐" in answer.content
     assert answer.image.startswith(b"\x89PNG")
+    assert answer.image_only is True
+
+
+def test_character_card_falls_back_to_text_when_render_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_render(data: object) -> bytes:
+        raise RuntimeError("render failed")
+
+    monkeypatch.setattr("qqbot_app.wuwa_service.render_character_card", fail_render)
+
+    assert _character_card_message("鸣潮练度：今汐", {}) == "鸣潮练度：今汐"
 
 
 def test_token_expired_returns_clear_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

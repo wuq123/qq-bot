@@ -48,6 +48,10 @@ COC_API_TOKEN=你的部落冲突API Token
 COC_TRANSLATIONS_PATH=config/coc_translations.yaml
 WUWA_DATA_DIR=data/wuwa
 WUWA_TIMEOUT=10
+LLM_CONFIG_PATH=config/llm.yaml
+LLM_API_KEY=你的Spark Lite APIPassword
+ONEBOT_CONFIG_PATH=config/onebot.yaml
+ONEBOT_ACCESS_TOKEN=你的OneBot访问Token
 ```
 
 沙箱测试阶段保持 `QQBOT_SANDBOX=true`，正式环境改为 `false`。
@@ -218,7 +222,7 @@ WUWA_TIMEOUT=10
 
 不带角色名发送 `练度` 或 `鸣潮练度` 会返回当前读取到的角色列表。
 
-查询成功后，面板、体力、角色练度和抽卡分析会返回本地实时生成的 PNG 图片。角色卡片包含角色立绘、属性、武器、声骸和技能；群聊与 C2C 图片通过 QQ 富媒体接口以 Base64 上传，不需要单独部署图床。图片上传失败时会自动回退为文本结果。
+查询成功后，面板、体力、角色练度和抽卡分析会返回本地实时生成的 PNG 图片。角色卡片包含角色立绘、属性、武器、声骸和技能，发送成功时仅返回图片，不附带重复文字；群聊与 C2C 图片通过 QQ 富媒体接口以 Base64 上传，不需要单独部署图床。角色卡生成、图片上传或发送失败时会自动回退为文本结果。
 
 抽卡分析：
 
@@ -322,9 +326,75 @@ features:
     user_openid: user
 ```
 
-## 后续接入 LLM
+## OpenAI 兼容 LLM
 
-QQ 消息事件处理层只依赖 `AnswerProvider.answer(user_id, text, context)`，返回普通字符串或 `BotMessage` 富消息。后续接入 LLM 时，新增一个 Provider 实现并在 `main.py` 中替换即可，不需要改事件处理逻辑。
+普通消息会先匹配业务命令和本地 FAQ，只有 FAQ 未命中时才调用 LLM。默认配置使用讯飞星火 Spark Lite；需要先在讯飞开放平台对应模型页面取得 HTTP 服务的 APIPassword，并写入 `.env`：
+
+```text
+LLM_CONFIG_PATH=config/llm.yaml
+LLM_API_KEY=你的Spark Lite APIPassword
+```
+
+模型配置位于 `config/llm.yaml`：
+
+```yaml
+enabled: true
+base_url: https://spark-api-open.xf-yun.com/v1
+api_key_env: LLM_API_KEY
+model: lite
+context_rounds: 5
+timeout: 30
+max_tokens: 1024
+temperature: 1.0
+tool_call_mode: json
+max_tool_iterations: 3
+confirmation_ttl_seconds: 120
+```
+
+- `enabled` 控制是否启用 LLM。关闭时继续使用 FAQ 的原兜底回答。
+- `api_key_env` 是保存 API Key 的环境变量名，密钥本身不要写入 YAML。
+- `context_rounds` 是每位用户在当前进程内保留的对话轮数；设为 `0` 表示单轮问答，重启机器人后历史会清空。
+- `base_url` 和 `model` 可替换为其他支持 OpenAI Chat Completions 的服务配置，无需修改代码。
+- `tool_call_mode` 可设为 `json` 或 `native`。Spark Lite 使用 `json`；更换为支持 Function Call 的模型后可改为 `native`。
+- `max_tool_iterations` 限制每次问答最多调用多少个工具，`confirmation_ttl_seconds` 控制待确认操作的有效时间。
+
+FAQ 未命中后，LangChain Agent 会判断是直接回答，还是调用笔记、部落冲突、鸣潮、权限或帮助工具。查询结果为文本时会交给模型整理；图片和按钮等富消息会直接回复。
+
+由模型识别出的笔记写入、权限修改、鸣潮绑定、抽卡导入和删除操作不会立即执行。机器人会返回操作摘要，需要在当前会话中发送：
+
+```text
+确认执行
+取消执行
+```
+
+手机号、验证码和 Token 不会交给模型识别，仍需在私聊使用原有固定命令。启用 LLM 但对应密钥环境变量为空时，机器人会继续使用 FAQ 兜底，同时记录配置提示。
+
+## OneBot 群聊随机回复
+
+QQ 官方群消息事件只包含 @ 机器人的消息。如需从未 @ 的普通群聊中随机回复，需要单独部署兼容 OneBot 11 的网关，并开启正向 WebSocket 服务。本项目不会安装或管理 OneBot 网关。
+
+在 `.env` 配置：
+
+```text
+ONEBOT_CONFIG_PATH=config/onebot.yaml
+ONEBOT_ACCESS_TOKEN=你的OneBot访问Token
+```
+
+默认 `config/onebot.yaml`：
+
+```yaml
+enabled: false
+ws_url: ws://127.0.0.1:3001
+access_token_env: ONEBOT_ACCESS_TOKEN
+reply_probability: 0.2
+context_messages: 5
+max_message_chars: 500
+reconnect_delay: 5
+```
+
+配置好网关地址和 Token 后，将 `enabled` 改为 `true`。机器人会忽略自身消息和 @ 机器人的消息，对每条未 @ 的普通群文本独立以 20% 概率调用 LLM；这是长期平均每五条回复一次，并不保证任意连续五条恰好回复一次。
+
+抽中时会把该群最近 `context_messages` 条未 @ 文本发送给已配置的外部 LLM，群之间隔离，重启后清空。消息不会携带 QQ 用户 ID 或昵称，单条会按 `max_message_chars` 截断；手机号、验证码和鸣潮 Token 等敏感消息不会进入上下文。随机群聊回复只生成普通文本，不调用 Agent 工具。现有 @ 命令、帮助、FAQ 和 Agent 仍由官方 botpy 处理。
 
 ## 测试
 

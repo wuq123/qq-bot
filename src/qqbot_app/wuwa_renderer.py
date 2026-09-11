@@ -30,45 +30,51 @@ def render_character_card(data: Dict[str, Any]) -> bytes:
     skill_urls = [str(_dict(item.get("skill")).get("iconUrl") or "") for item in skills[:5]]
     assets = _load_images([art_url, weapon_url, *echo_urls, *skill_urls])
 
-    draw.rounded_rectangle((34, 32, 1166, 490), radius=34, fill=(16, 34, 44, 220), outline=(86, 224, 197, 90), width=2)
+    draw.ellipse((760, -180, 1320, 400), fill=(50, 196, 174, 22))
+    draw.ellipse((-280, 1040, 420, 1680), fill=(61, 115, 144, 18))
+    _draw_panel(draw, (34, 32, 1166, 500), radius=34, outline=(86, 224, 197, 105))
+    draw.rounded_rectangle((56, 68, 62, 238), radius=3, fill=ACCENT)
+    draw.ellipse((700, 54, 1146, 492), fill=(86, 224, 197, 15), outline=(86, 224, 197, 35), width=2)
     art = assets.get(art_url)
     if art:
-        _paste_contain(image, art, (600, 38, 1140, 486), fade=True)
-    draw.text((72, 72), "鸣潮角色练度", font=_font(28), fill=ACCENT)
-    draw.text((70, 116), name, font=_font(66, bold=True), fill=TEXT)
-    draw.text(
-        (74, 204),
-        f"{role.get('attributeName') or '-'}  ·  LV.{data.get('level') or role.get('level') or '-'}  ·  "
-        f"{_unlocked_chains(data.get('chainList'))} 链",
-        font=_font(26),
-        fill=MUTED,
-    )
-    _draw_attributes(draw, data.get("roleAttributeList"), 70, 282)
+        _paste_contain(image, art, (610, 42, 1142, 496), fade=True)
+    draw.text((82, 68), "鸣潮 · 角色练度", font=_font(25), fill=ACCENT)
+    draw.text((80, 112), _truncate(name, 8), font=_font(62, bold=True), fill=TEXT)
+    badge_x = 80
+    for label, value in (
+        ("属性", role.get("attributeName") or "-"),
+        ("等级", f"LV.{data.get('level') or role.get('level') or '-'}"),
+        ("共鸣链", f"{_unlocked_chains(data.get('chainList'))} 链"),
+    ):
+        badge_x += _draw_badge(draw, badge_x, 202, label, str(value)) + 12
+    _draw_attributes(draw, data.get("roleAttributeList"), 78, 274)
 
-    _section_title(draw, "武器", 520)
-    draw.rounded_rectangle((44, 566, 1156, 720), radius=24, fill=PANEL)
+    _section_title(draw, "武器", "WEAPON", 530)
+    _draw_panel(draw, (44, 576, 1156, 726), radius=24, outline=(86, 224, 197, 45))
+    draw.rounded_rectangle((64, 592, 190, 710), radius=20, fill=(10, 27, 36, 205), outline=(86, 224, 197, 55), width=2)
     weapon_icon = assets.get(weapon_url)
     if weapon_icon:
-        _paste_contain(image, weapon_icon, (66, 580, 192, 706))
-    draw.text((220, 590), str(weapon.get("weaponName") or "未装备武器"), font=_font(34, bold=True), fill=TEXT)
-    draw.text(
-        (220, 642),
-        f"LV.{weapon_data.get('level') or '-'}  ·  精炼 {weapon_data.get('resonLevel') or '-'}  ·  "
+        _paste_contain(image, weapon_icon, (68, 594, 186, 708))
+    draw.text((220, 598), _truncate(str(weapon.get("weaponName") or "未装备武器"), 18), font=_font(34, bold=True), fill=TEXT)
+    weapon_badge_x = 220
+    for value in (
+        f"LV.{weapon_data.get('level') or '-'}",
+        f"精炼 {weapon_data.get('resonLevel') or '-'}",
         f"{weapon.get('weaponStarLevel') or '-'} 星",
-        font=_font(24),
-        fill=GOLD,
-    )
+    ):
+        weapon_badge_x += _draw_value_pill(draw, weapon_badge_x, 658, value) + 12
 
-    _section_title(draw, "声骸", 750)
+    _section_title(draw, "声骸", "ECHOES", 758)
     if not echoes:
-        draw.rounded_rectangle((44, 796, 1156, 1150), radius=24, fill=PANEL)
-        draw.text((80, 840), "暂无已装备声骸", font=_font(30), fill=MUTED)
+        _draw_panel(draw, (44, 806, 1156, 1194), radius=24)
+        draw.text((80, 850), "暂无已装备声骸", font=_font(30), fill=MUTED)
     else:
         _draw_echoes(image, draw, echoes[:5], echo_urls, assets)
 
-    _section_title(draw, "共鸣技能", 1230)
+    _section_title(draw, "共鸣技能", "SKILLS", 1232)
     _draw_skills(image, draw, skills[:5], skill_urls, assets)
-    draw.text((44, 1460), "数据来源：库街区 · 图片由机器人实时生成", font=_font(19), fill=(150, 168, 180))
+    draw.text((44, 1468), "数据来源：库街区  ·  图片由机器人实时生成", font=_font(18), fill=(126, 151, 164))
+    draw.text((1058, 1468), "WUWA", font=_font(18, bold=True), fill=(86, 224, 197, 135))
     return _to_png(image)
 
 
@@ -99,10 +105,11 @@ def _draw_attributes(draw: ImageDraw.ImageDraw, value: Any, x: int, y: int) -> N
     for index, item in enumerate(attributes):
         column = index % 2
         row = index // 2
-        left = x + column * 250
-        top = y + row * 52
-        draw.text((left, top), str(item.get("attributeName") or "属性"), font=_font(21), fill=MUTED)
-        draw.text((left + 112, top), str(item.get("attributeValue") or "-"), font=_font(22, bold=True), fill=TEXT)
+        left = x + column * 252
+        top = y + row * 62
+        draw.rounded_rectangle((left, top, left + 238, top + 50), radius=13, fill=(9, 27, 36, 165))
+        draw.text((left + 14, top + 13), _truncate(str(item.get("attributeName") or "属性"), 7), font=_font(18), fill=MUTED)
+        _draw_right_text(draw, left + 224, top + 12, str(item.get("attributeValue") or "-"), _font(20, bold=True), TEXT)
 
 
 def _draw_echoes(
@@ -115,24 +122,26 @@ def _draw_echoes(
     width = 214
     for index, echo in enumerate(echoes):
         x = 44 + index * 224
-        draw.rounded_rectangle((x, 796, x + width, 1188), radius=22, fill=PANEL)
+        _draw_panel(draw, (x, 806, x + width, 1194), radius=22, outline=(86, 224, 197, 32))
+        draw.rounded_rectangle((x + 38, 822, x + 176, 952), radius=24, fill=(9, 27, 36, 185))
         icon = assets.get(urls[index]) if index < len(urls) else None
         if icon:
-            _paste_contain(image, icon, (x + 43, 812, x + 171, 940))
+            _paste_contain(image, icon, (x + 43, 826, x + 171, 948))
         prop = _dict(echo.get("phantomProp"))
         name = str(prop.get("name") or echo.get("echoName") or "声骸")
-        draw.text((x + 16, 950), _truncate(name, 8), font=_font(23, bold=True), fill=TEXT)
+        draw.text((x + 16, 964), _truncate(name, 8), font=_font(23, bold=True), fill=TEXT)
         echo_level = echo.get("level") or 0
         echo_cost = prop.get("cost") or echo.get("cost") or "-"
-        draw.text((x + 16, 986), f"+{echo_level}  COST {echo_cost}", font=_font(19), fill=GOLD)
+        draw.rounded_rectangle((x + 14, 1000, x + 200, 1035), radius=11, fill=(245, 200, 107, 18))
+        draw.text((x + 24, 1007), f"+{echo_level}  ·  COST {echo_cost}", font=_font(17, bold=True), fill=GOLD)
         props = _list(echo.get("mainProps")) + _list(echo.get("subProps"))
-        top = 1024
+        top = 1051
         for item in props[:5]:
             label = _truncate(str(item.get("attributeName") or "-"), 6)
             value = str(item.get("attributeValue") or "-")
             draw.text((x + 16, top), label, font=_font(17), fill=MUTED)
-            draw.text((x + 128, top), value, font=_font(17, bold=True), fill=TEXT)
-            top += 29
+            _draw_right_text(draw, x + 198, top, value, _font(17, bold=True), TEXT)
+            top += 27
 
 
 def _draw_skills(
@@ -143,17 +152,20 @@ def _draw_skills(
     assets: Dict[str, Image.Image],
 ) -> None:
     if not skills:
-        draw.text((48, 1280), "暂无技能数据", font=_font(25), fill=MUTED)
+        draw.text((48, 1284), "暂无技能数据", font=_font(25), fill=MUTED)
         return
     for index, item in enumerate(skills):
-        x = 48 + index * 224
+        x = 44 + index * 224
         skill = _dict(item.get("skill"))
         icon = assets.get(urls[index]) if index < len(urls) else None
+        _draw_panel(draw, (x, 1278, x + 214, 1442), radius=20, outline=(86, 224, 197, 28))
+        draw.rounded_rectangle((x + 16, 1294, x + 90, 1368), radius=18, fill=(9, 27, 36, 190))
         if icon:
-            _paste_contain(image, icon, (x, 1276, x + 76, 1352))
+            _paste_contain(image, icon, (x + 17, 1295, x + 89, 1367))
         skill_name = _truncate(str(skill.get("type") or skill.get("name") or "技能"), 8)
-        draw.text((x, 1362), skill_name, font=_font(18), fill=MUTED)
-        draw.text((x, 1392), f"等级 {item.get('level') or '-'}", font=_font(21, bold=True), fill=TEXT)
+        draw.text((x + 16, 1380), skill_name, font=_font(17), fill=MUTED)
+        draw.text((x + 106, 1304), "等级", font=_font(17), fill=MUTED)
+        draw.text((x + 106, 1332), str(item.get("level") or "-"), font=_font(26, bold=True), fill=ACCENT)
 
 
 def _load_images(urls: Iterable[str]) -> Dict[str, Image.Image]:
@@ -201,7 +213,7 @@ def _gradient_image(width: int, height: int) -> Image.Image:
     draw = ImageDraw.Draw(image)
     for y in range(height):
         ratio = y / max(height - 1, 1)
-        color = (8 + int(8 * ratio), 20 + int(18 * ratio), 28 + int(20 * ratio))
+        color = (7 + int(8 * ratio), 19 + int(17 * ratio), 28 + int(18 * ratio))
         draw.line((0, y, width, y), fill=color)
     return image
 
@@ -221,9 +233,55 @@ def _font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.I
     return ImageFont.load_default()
 
 
-def _section_title(draw: ImageDraw.ImageDraw, title: str, y: int) -> None:
-    draw.text((44, y), title, font=_font(29, bold=True), fill=TEXT)
-    draw.line((132, y + 23, 1156, y + 23), fill=(86, 224, 197, 70), width=2)
+def _section_title(draw: ImageDraw.ImageDraw, title: str, subtitle: str, y: int) -> None:
+    title_font = _font(29, bold=True)
+    subtitle_font = _font(17)
+    title_width = draw.textlength(title, font=title_font)
+    subtitle_x = int(44 + title_width + 30)
+    subtitle_width = draw.textlength(subtitle, font=subtitle_font)
+    draw.text((44, y), title, font=title_font, fill=TEXT)
+    draw.text((subtitle_x, y + 7), subtitle, font=subtitle_font, fill=(86, 224, 197, 145))
+    draw.line((subtitle_x + subtitle_width + 32, y + 22, 1156, y + 22), fill=(86, 224, 197, 65), width=2)
+
+
+def _draw_panel(
+    draw: ImageDraw.ImageDraw,
+    box: tuple[int, int, int, int],
+    radius: int,
+    outline: tuple[int, int, int, int] = (255, 255, 255, 16),
+) -> None:
+    draw.rounded_rectangle(box, radius=radius, fill=(23, 38, 48, 225), outline=outline, width=2)
+
+
+def _draw_badge(draw: ImageDraw.ImageDraw, x: int, y: int, label: str, value: str) -> int:
+    label_font = _font(16)
+    value_font = _font(18, bold=True)
+    label_width = draw.textlength(label, font=label_font)
+    value_width = draw.textlength(value, font=value_font)
+    width = int(label_width + value_width + 42)
+    draw.rounded_rectangle((x, y, x + width, y + 42), radius=13, fill=(9, 27, 36, 180), outline=(86, 224, 197, 38), width=1)
+    draw.text((x + 12, y + 11), label, font=label_font, fill=MUTED)
+    draw.text((x + 24 + label_width, y + 9), value, font=value_font, fill=TEXT)
+    return width
+
+
+def _draw_value_pill(draw: ImageDraw.ImageDraw, x: int, y: int, value: str) -> int:
+    font = _font(18, bold=True)
+    width = int(draw.textlength(value, font=font) + 28)
+    draw.rounded_rectangle((x, y, x + width, y + 38), radius=12, fill=(245, 200, 107, 18), outline=(245, 200, 107, 36), width=1)
+    draw.text((x + 14, y + 9), value, font=font, fill=GOLD)
+    return width
+
+
+def _draw_right_text(
+    draw: ImageDraw.ImageDraw,
+    right: int,
+    y: int,
+    value: str,
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    fill: str,
+) -> None:
+    draw.text((right - draw.textlength(value, font=font), y), value, font=font, fill=fill)
 
 
 def _unlocked_chains(value: Any) -> int:

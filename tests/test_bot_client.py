@@ -2,7 +2,14 @@ import asyncio
 import base64
 from types import SimpleNamespace
 
-from qqbot_app.bot_client import QQQuestionAnswerBot, _build_payload, _extract_mention_user_ids, _extract_user_id, _send_reply
+from qqbot_app.bot_client import (
+    QQQuestionAnswerBot,
+    _build_payload,
+    _extract_conversation_id,
+    _extract_mention_user_ids,
+    _extract_user_id,
+    _send_reply,
+)
 from qqbot_app.providers import BotMessage
 
 
@@ -52,6 +59,18 @@ def test_extract_mention_user_ids() -> None:
     )
 
     assert _extract_mention_user_ids(message) == ["channel-user", "group-user", "c2c-user"]
+
+
+def test_extract_conversation_id_prefers_group() -> None:
+    message = SimpleNamespace(group_openid="group-1", channel_id="channel-1")
+
+    assert _extract_conversation_id(message, "group_at_message") == "group:group-1"
+
+
+def test_extract_conversation_id_uses_c2c_author() -> None:
+    message = SimpleNamespace(author=SimpleNamespace(user_openid="user-1"))
+
+    assert _extract_conversation_id(message, "c2c_message") == "user:user-1"
 
 
 def test_build_payload_for_rich_message() -> None:
@@ -130,6 +149,26 @@ def test_send_group_image_uploads_base64_and_sends_media() -> None:
     assert message.calls == [{"content": "鸣潮练度：今汐", "msg_type": 7, "media": {"file_info": "media-1"}}]
 
 
+def test_send_group_image_only_omits_content() -> None:
+    class _ImageHttp:
+        async def request(self, route: object, **kwargs: object) -> dict[str, object]:
+            return {"file_info": "media-1"}
+
+    message = _ReplyMessage()
+    message._api = SimpleNamespace(_http=_ImageHttp())
+    message.group_openid = "group-1"
+
+    asyncio.run(
+        _send_reply(
+            message,
+            "group_at_message",
+            BotMessage(content="鸣潮练度：今汐", image=b"card", image_only=True),
+        )
+    )
+
+    assert message.calls == [{"msg_type": 7, "media": {"file_info": "media-1"}}]
+
+
 def test_send_channel_image_uses_file_image() -> None:
     message = _ReplyMessage()
     image = b"\x89PNG\r\n\x1a\ncard"
@@ -137,6 +176,17 @@ def test_send_channel_image_uses_file_image() -> None:
     asyncio.run(_send_reply(message, "at_message", BotMessage(content="鸣潮面板", image=image)))
 
     assert message.calls == [{"content": "鸣潮面板", "file_image": image}]
+
+
+def test_send_channel_image_only_omits_content() -> None:
+    message = _ReplyMessage()
+    image = b"\x89PNG\r\n\x1a\ncard"
+
+    asyncio.run(
+        _send_reply(message, "at_message", BotMessage(content="鸣潮练度：今汐", image=image, image_only=True))
+    )
+
+    assert message.calls == [{"file_image": image}]
 
 
 def test_send_c2c_image_uploads_base64_and_sends_media() -> None:
@@ -159,6 +209,50 @@ def test_send_c2c_image_uploads_base64_and_sends_media() -> None:
     assert route.url == "https://api.sgroup.qq.com/v2/users/user-1/files"
     assert request_kwargs["json"]["file_data"] == base64.b64encode(image).decode("ascii")
     assert message.calls == [{"content": "鸣潮面板", "msg_type": 7, "media": {"file_info": "media-c2c"}}]
+
+
+def test_send_c2c_image_only_omits_content() -> None:
+    class _ImageHttp:
+        async def request(self, route: object, **kwargs: object) -> dict[str, object]:
+            return {"file_info": "media-c2c"}
+
+    message = _ReplyMessage()
+    message._api = SimpleNamespace(_http=_ImageHttp())
+    message.author = SimpleNamespace(user_openid="user-1")
+
+    asyncio.run(
+        _send_reply(
+            message,
+            "c2c_message",
+            BotMessage(content="鸣潮练度：今汐", image=b"card", image_only=True),
+        )
+    )
+
+    assert message.calls == [{"msg_type": 7, "media": {"file_info": "media-c2c"}}]
+
+
+def test_send_image_only_falls_back_to_text() -> None:
+    message = _ReplyMessage(fail_once=True)
+    answer = BotMessage(content="鸣潮练度：今汐", image=b"card", image_only=True)
+
+    asyncio.run(_send_reply(message, "at_message", answer))
+
+    assert message.calls == [{"file_image": b"card"}, {"content": "鸣潮练度：今汐"}]
+
+
+def test_send_image_only_falls_back_when_upload_fails() -> None:
+    class _ImageHttp:
+        async def request(self, route: object, **kwargs: object) -> dict[str, object]:
+            raise RuntimeError("upload failed")
+
+    message = _ReplyMessage()
+    message._api = SimpleNamespace(_http=_ImageHttp())
+    message.group_openid = "group-1"
+    answer = BotMessage(content="鸣潮练度：今汐", image=b"card", image_only=True)
+
+    asyncio.run(_send_reply(message, "group_at_message", answer))
+
+    assert message.calls == [{"content": "鸣潮练度：今汐"}]
 
 
 def test_group_manage_event_handlers_do_not_fail() -> None:
