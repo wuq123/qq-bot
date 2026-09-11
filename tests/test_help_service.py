@@ -28,6 +28,18 @@ def test_help_feature_returns_detail_and_short_commands() -> None:
     assert action["enter"] is False
 
 
+def test_wuwa_help_returns_detail_and_parameter_buttons() -> None:
+    answer = HelpService.from_file(Path("config/help.yaml")).answer("帮助 鸣潮")
+
+    assert isinstance(answer, BotMessage)
+    assert "练度：今汐" in answer.content
+    assert "导入鸣潮抽卡" in answer.content
+    assert answer.keyboard is not None
+    action = answer.keyboard["content"]["rows"][1]["buttons"][0]["action"]
+    assert action["data"] == "练度："
+    assert action["enter"] is False
+
+
 def test_note_query_button_waits_for_user_input() -> None:
     answer = HelpService.from_file(Path("config/help.yaml")).answer("帮助 笔记")
 

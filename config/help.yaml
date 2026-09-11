@@ -7,7 +7,8 @@ features:
       - "笔记功能"
     summary: "通过 QQ 会话新增、追加、列出、查看 NOTE_ROOT 下的 Markdown 笔记。"
     requirements:
-      - "需要拥有笔记功能的 owner、admin 或 user 身份。"
+      - "可识别的 QQ 用户默认为 user，可以直接列出和查看笔记。"
+      - "新增、创建、修改和追加共享笔记需要笔记 admin 或全局 owner。"
       - "需要在 .env 配置 NOTE_ROOT，机器人进程需要有该目录写入权限。"
     commands:
       - "笔记列表"
@@ -36,7 +37,7 @@ features:
       - "部落冲突查询"
     summary: "查询 Clash of Clans 玩家、部落战、都城突袭、战斗日志和联赛历史。"
     requirements:
-      - "需要拥有部落冲突功能的 owner、admin 或 user 身份。"
+      - "可识别的 QQ 用户默认为 user；显式 guest 不可使用。"
       - "需要配置 COC_API_TOKEN，并在开发者后台加入机器人服务器公网 IP。"
       - "官方 API 不返回建筑升级剩余时间。"
     commands:
@@ -62,6 +63,45 @@ features:
       - label: "联赛历史"
         command: "联赛历史："
         enter: false
+  - key: "wuwa"
+    title: "鸣潮"
+    aliases:
+      - "wuwa"
+      - "鸣潮查询"
+      - "鸣潮玩家"
+    summary: "以图片查询鸣潮玩家面板、体力、角色练度，并统计已导入的抽卡记录。"
+    requirements:
+      - "可识别的 QQ 用户默认为 user；显式 guest 不可使用。"
+      - "手机号、验证码和 Token 只允许在私聊中发送。"
+      - "触发人机验证时，按回复提示在库街区官方页面/App 获取短信后继续登录。"
+      - "查询成功后返回 PNG 图片；图片上传失败时自动回退为文本。"
+      - "抽卡分析需要先导入游戏内唤取记录 URL 或导出的 JSON。"
+    commands:
+      - "鸣潮登录：13800138000"
+      - "鸣潮验证码：123456"
+      - "绑定鸣潮Token：<库街区token>"
+      - "绑定鸣潮角色：101234567"
+      - "鸣潮面板"
+      - "鸣潮体力"
+      - "练度：今汐"
+      - "导入鸣潮抽卡：<唤取记录URL>"
+      - "抽卡分析"
+    buttons:
+      - label: "面板"
+        command: "鸣潮面板"
+      - label: "体力"
+        command: "鸣潮体力"
+      - label: "练度"
+        command: "练度："
+        enter: false
+      - label: "导入抽卡"
+        command: "导入鸣潮抽卡："
+        enter: false
+      - label: "抽卡分析"
+        command: "抽卡分析"
+      - label: "手机号登录"
+        command: "鸣潮登录："
+        enter: false
   - key: "auth"
     title: "权限"
     aliases:
@@ -71,13 +111,16 @@ features:
     summary: "机器人按 owner、admin、user、guest 四层身份控制不同功能。"
     requirements:
       - "初始 owner 通过 .env 的 BOT_OWNER_USER_IDS 配置。"
+      - "可识别用户未配置时默认是 user，默认值不会写入 auth.yaml；显式 guest 不可使用对应功能。"
       - "QQ 会话默认使用中文功能名，例如 笔记、部落冲突。"
     commands:
       - "查看我的ID"
       - "查看权限"
       - "查看权限 用户：user_openid"
       - "设置权限 用户：user_openid 功能：笔记 身份：user"
+      - "设置权限 用户：user_openid 功能：鸣潮 身份：user"
       - "@机器人 提升笔记权限 @某某"
+      - "@机器人 提升鸣潮权限 @某某"
     buttons:
       - label: "我的ID"
         command: "查看我的ID"

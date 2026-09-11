@@ -48,6 +48,8 @@ def main() -> None:
         help_service=help_service,
         coc_api_token=config.coc_api_token,
         coc_translations_path=config.coc_translations_path,
+        wuwa_data_dir=config.wuwa_data_dir,
+        wuwa_timeout=config.wuwa_timeout,
     )
     client = QQQuestionAnswerBot(provider, intents=intents, is_sandbox=config.sandbox)
     client.run(appid=config.app_id, secret=config.app_secret)

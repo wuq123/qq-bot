@@ -16,6 +16,8 @@ class BotConfig:
     feature_names_path: str
     coc_api_token: str
     coc_translations_path: str
+    wuwa_data_dir: str
+    wuwa_timeout: int
 
     @classmethod
     def from_env(cls) -> "BotConfig":
@@ -30,6 +32,8 @@ class BotConfig:
         feature_names_path = os.getenv("FEATURE_NAMES_PATH", "config/features.yaml").strip()
         coc_api_token = os.getenv("COC_API_TOKEN", "").strip()
         coc_translations_path = os.getenv("COC_TRANSLATIONS_PATH", "config/coc_translations.yaml").strip()
+        wuwa_data_dir = os.getenv("WUWA_DATA_DIR", "data/wuwa").strip()
+        wuwa_timeout = _parse_int(os.getenv("WUWA_TIMEOUT", "10"), 10)
 
         missing = []
         if not app_id:
@@ -51,8 +55,17 @@ class BotConfig:
             feature_names_path=feature_names_path,
             coc_api_token=coc_api_token,
             coc_translations_path=coc_translations_path,
+            wuwa_data_dir=wuwa_data_dir,
+            wuwa_timeout=wuwa_timeout,
         )
 
 
 def _parse_csv(value: str) -> List[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _parse_int(value: str, default: int) -> int:
+    try:
+        return int(value)
+    except ValueError:
+        return default
