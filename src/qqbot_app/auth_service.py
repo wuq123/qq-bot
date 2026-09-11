@@ -6,7 +6,6 @@ from typing import Dict, Iterable, Optional, Set
 import yaml
 
 ROLES = {"owner", "admin", "user", "guest"}
-USABLE_ROLES = {"owner", "admin", "user"}
 ROLE_RANKS = {"guest": 0, "user": 1, "admin": 2, "owner": 3}
 RANK_ROLES = {value: key for key, value in ROLE_RANKS.items()}
 
@@ -53,12 +52,20 @@ class AuthService:
             self.save()
 
     def get_role(self, user_id: str, feature: str) -> str:
+        if user_id == "unknown":
+            return "guest"
         if user_id in self._owners:
             return "owner"
-        return self._features.get(feature, {}).get(user_id, "guest")
+        return self._features.get(feature, {}).get(user_id, "user")
 
     def can_use(self, user_id: str, feature: str) -> bool:
-        return user_id != "unknown" and self.get_role(user_id, feature) in USABLE_ROLES
+        return self.has_at_least(user_id, feature, "user")
+
+    def has_at_least(self, user_id: str, feature: str, minimum_role: str) -> bool:
+        """判断用户是否达到功能最低身份。"""
+        if user_id == "unknown":
+            return False
+        return ROLE_RANKS[self.get_role(user_id, feature)] >= ROLE_RANKS[minimum_role]
 
     def feature_error(self, user_id: str, feature_name: str) -> str:
         if user_id == "unknown":
@@ -132,7 +139,7 @@ class AuthService:
             if role:
                 feature_lines.append(f"- {self._feature_names.display(feature)}: {role}")
         if not feature_lines:
-            feature_lines.append("- 无（默认 guest）")
+            feature_lines.append("- 无（默认 user）")
         lines.append("全局身份：无")
         lines.append("功能权限：")
         lines.extend(feature_lines)

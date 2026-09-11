@@ -1,7 +1,9 @@
+import base64
 import logging
 from typing import Any
 
 import botpy
+from botpy.http import Route
 
 from qqbot_app.providers import AnswerContext, AnswerProvider, BotAnswer, BotMessage
 
@@ -72,6 +74,14 @@ class QQQuestionAnswerBot(botpy.Client):
 
 
 async def _send_reply(message: Any, event_type: str, answer: BotAnswer) -> None:
+    if isinstance(answer, BotMessage) and answer.image:
+        try:
+            await _send_image_reply(message, event_type, answer)
+        except Exception:
+            logger.warning("image message failed, fallback to text", exc_info=True)
+            await _send_payload(message, event_type, {"content": answer.content})
+        return
+
     payload = _build_payload(answer)
     try:
         await _send_payload(message, event_type, payload)
@@ -81,6 +91,44 @@ async def _send_reply(message: Any, event_type: str, answer: BotAnswer) -> None:
             raise
         logger.warning("rich message failed, fallback to text", exc_info=True)
         await _send_payload(message, event_type, {"content": answer.content})
+
+
+async def _send_image_reply(message: Any, event_type: str, answer: BotMessage) -> None:
+    if event_type not in {"c2c_message", "group_at_message"}:
+        await _send_payload(message, event_type, {"content": answer.content, "file_image": answer.image})
+        return
+    media = await _upload_image(message, event_type, answer.image)
+    await _send_payload(message, event_type, {"content": answer.content, "msg_type": 7, "media": media})
+
+
+async def _upload_image(message: Any, event_type: str, image: bytes) -> Any:
+    api = getattr(message, "_api", None)
+    if api is None:
+        raise RuntimeError("消息对象缺少图片上传 API")
+    file_data = base64.b64encode(image).decode("ascii")
+    if event_type == "group_at_message":
+        group_openid = getattr(message, "group_openid", None)
+        upload = getattr(api, "post_group_base64file", None)
+        if callable(upload):
+            return await upload(
+                group_openid=group_openid,
+                file_type=1,
+                file_data=file_data,
+                srv_send_msg=False,
+            )
+        route = Route("POST", "/v2/groups/{group_openid}/files", group_openid=group_openid)
+        payload = {"group_openid": group_openid, "file_type": 1, "file_data": file_data, "srv_send_msg": False}
+    else:
+        openid = _extract_openid(message)
+        upload = getattr(api, "post_c2c_base64file", None)
+        if callable(upload):
+            return await upload(openid=openid, file_type=1, file_data=file_data, srv_send_msg=False)
+        route = Route("POST", "/v2/users/{openid}/files", openid=openid)
+        payload = {"openid": openid, "file_type": 1, "file_data": file_data, "srv_send_msg": False}
+    http = getattr(api, "_http", None)
+    if http is None:
+        raise RuntimeError("当前 SDK 不支持本地图片上传")
+    return await http.request(route, json=payload)
 
 
 async def _send_payload(message: Any, event_type: str, payload: dict[str, Any]) -> None:

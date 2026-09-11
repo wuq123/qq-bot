@@ -15,6 +15,8 @@ def test_load_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FEATURE_NAMES_PATH", "config/custom-features.yaml")
     monkeypatch.setenv("COC_API_TOKEN", "coc-token")
     monkeypatch.setenv("COC_TRANSLATIONS_PATH", "config/custom-coc.yaml")
+    monkeypatch.setenv("WUWA_DATA_DIR", "data/custom-wuwa")
+    monkeypatch.setenv("WUWA_TIMEOUT", "15")
 
     config = BotConfig.from_env()
 
@@ -29,6 +31,8 @@ def test_load_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.feature_names_path == "config/custom-features.yaml"
     assert config.coc_api_token == "coc-token"
     assert config.coc_translations_path == "config/custom-coc.yaml"
+    assert config.wuwa_data_dir == "data/custom-wuwa"
+    assert config.wuwa_timeout == 15
 
 
 def test_empty_bot_owner_user_ids(monkeypatch: pytest.MonkeyPatch) -> None:

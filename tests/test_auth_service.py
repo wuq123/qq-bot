@@ -29,6 +29,31 @@ def test_load_yaml_permissions(tmp_path: Path) -> None:
     assert service.get_role("user-1", "notes") == "user"
 
 
+def test_identified_user_defaults_to_user_without_persisting(tmp_path: Path) -> None:
+    path = tmp_path / "auth.yaml"
+    service = AuthService(path)
+
+    assert service.get_role("u1", "notes") == "user"
+    assert service.can_use("u1", "notes") is True
+    assert service.has_at_least("u1", "notes", "admin") is False
+    assert not path.exists()
+
+
+def test_explicit_guest_overrides_default_user(tmp_path: Path) -> None:
+    service = AuthService(tmp_path / "auth.yaml", ["owner-1"])
+    service.grant("owner-1", "u1", "notes", "guest")
+
+    assert service.get_role("u1", "notes") == "guest"
+    assert service.can_use("u1", "notes") is False
+    assert service.can_use("unknown", "notes") is False
+
+
+def test_describe_reports_default_user(tmp_path: Path) -> None:
+    service = AuthService(tmp_path / "auth.yaml")
+
+    assert "默认 user" in service.describe("u1")
+
+
 def test_same_user_can_have_different_feature_roles(tmp_path: Path) -> None:
     path = tmp_path / "auth.yaml"
     service = AuthService(path, ["owner-1"])
@@ -91,11 +116,12 @@ def test_parse_auth_commands() -> None:
 
 def test_feature_names_translate_chinese_feature(tmp_path: Path) -> None:
     path = tmp_path / "features.yaml"
-    path.write_text("features:\n  notes: 笔记\n  clash: 部落冲突\n", encoding="utf-8")
+    path.write_text("features:\n  notes: 笔记\n  clash: 部落冲突\n  wuwa: 鸣潮\n", encoding="utf-8")
     names = FeatureNames.from_file(path)
 
     assert names.resolve("笔记") == "notes"
     assert names.resolve("部落冲突") == "clash"
+    assert names.resolve("鸣潮") == "wuwa"
     assert names.display("notes") == "笔记"
 
 
@@ -112,17 +138,16 @@ def test_owner_promotes_one_level_below_actor(tmp_path: Path) -> None:
 
     first = service.promote("owner-1", "u1", "笔记")
     second = service.promote("owner-1", "u1", "笔记")
-    third = service.promote("owner-1", "u1", "笔记")
 
-    assert first == "已将用户 u1 在 笔记 功能的身份提升为 user。"
-    assert second == "已将用户 u1 在 笔记 功能的身份提升为 admin。"
-    assert third == "用户 u1 在 笔记 功能已达到你可提升的最高身份。"
+    assert first == "已将用户 u1 在 笔记 功能的身份提升为 admin。"
+    assert second == "用户 u1 在 笔记 功能已达到你可提升的最高身份。"
     assert service.get_role("u1", "notes") == "admin"
 
 
 def test_admin_promotes_only_to_user(tmp_path: Path) -> None:
     service = AuthService(tmp_path / "auth.yaml", ["owner-1"], FeatureNames({"notes": "笔记"}))
     service.grant("owner-1", "admin-1", "笔记", "admin")
+    service.grant("owner-1", "u1", "笔记", "guest")
 
     first = service.promote("admin-1", "u1", "笔记")
     second = service.promote("admin-1", "u1", "笔记")

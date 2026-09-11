@@ -1,4 +1,5 @@
 import asyncio
+import base64
 from types import SimpleNamespace
 
 from qqbot_app.bot_client import QQQuestionAnswerBot, _build_payload, _extract_mention_user_ids, _extract_user_id, _send_reply
@@ -94,6 +95,70 @@ def test_send_reply_keeps_plain_text_behavior() -> None:
     asyncio.run(_send_reply(message, "group_at_message", "普通回答"))
 
     assert message.calls == [{"content": "普通回答"}]
+
+
+def test_send_group_image_uploads_base64_and_sends_media() -> None:
+    class _ImageHttp:
+        def __init__(self) -> None:
+            self.requests = []
+
+        async def request(self, route: object, **kwargs: object) -> dict[str, object]:
+            self.requests.append((route, kwargs))
+            return {"file_info": "media-1"}
+
+    class _ImageApi:
+        def __init__(self) -> None:
+            self._http = _ImageHttp()
+
+    message = _ReplyMessage()
+    message._api = _ImageApi()
+    message.group_openid = "group-1"
+    image = b"\x89PNG\r\n\x1a\ncard"
+
+    asyncio.run(_send_reply(message, "group_at_message", BotMessage(content="鸣潮练度：今汐", image=image)))
+
+    route, request_kwargs = message._api._http.requests[0]
+    assert route.url == "https://api.sgroup.qq.com/v2/groups/group-1/files"
+    assert request_kwargs == {
+        "json": {
+            "group_openid": "group-1",
+            "file_type": 1,
+            "file_data": base64.b64encode(image).decode("ascii"),
+            "srv_send_msg": False,
+        }
+    }
+    assert message.calls == [{"content": "鸣潮练度：今汐", "msg_type": 7, "media": {"file_info": "media-1"}}]
+
+
+def test_send_channel_image_uses_file_image() -> None:
+    message = _ReplyMessage()
+    image = b"\x89PNG\r\n\x1a\ncard"
+
+    asyncio.run(_send_reply(message, "at_message", BotMessage(content="鸣潮面板", image=image)))
+
+    assert message.calls == [{"content": "鸣潮面板", "file_image": image}]
+
+
+def test_send_c2c_image_uploads_base64_and_sends_media() -> None:
+    class _ImageHttp:
+        def __init__(self) -> None:
+            self.requests = []
+
+        async def request(self, route: object, **kwargs: object) -> dict[str, object]:
+            self.requests.append((route, kwargs))
+            return {"file_info": "media-c2c"}
+
+    message = _ReplyMessage()
+    message._api = SimpleNamespace(_http=_ImageHttp())
+    message.author = SimpleNamespace(user_openid="user-1")
+    image = b"\x89PNG\r\n\x1a\ncard"
+
+    asyncio.run(_send_reply(message, "c2c_message", BotMessage(content="鸣潮面板", image=image)))
+
+    route, request_kwargs = message._api._http.requests[0]
+    assert route.url == "https://api.sgroup.qq.com/v2/users/user-1/files"
+    assert request_kwargs["json"]["file_data"] == base64.b64encode(image).decode("ascii")
+    assert message.calls == [{"content": "鸣潮面板", "msg_type": 7, "media": {"file_info": "media-c2c"}}]
 
 
 def test_group_manage_event_handlers_do_not_fail() -> None:
