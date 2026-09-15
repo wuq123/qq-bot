@@ -145,7 +145,7 @@ def _build_tools(
             "help",
             "查看机器人全部功能或指定主题的使用帮助。",
             HelpToolInput,
-            lambda value, user_id, context: _help_answer(help_service, value.topic),
+            lambda value, user_id, context: _help_answer(help_service, value.topic, context),
         ),
     }
 
@@ -170,10 +170,11 @@ def _registered_tool(
     return RegisteredTool(tool=tool, execute=execute, mutating=mutating, summarize=summarize)
 
 
-def _help_answer(help_service: Optional[HelpService], topic: str) -> BotAnswer:
+def _help_answer(help_service: Optional[HelpService], topic: str, context: AnswerContext) -> BotAnswer:
     if help_service is None:
         return "暂未配置帮助功能。"
-    return help_service.answer(f"帮助 {topic}".strip()) or "没有找到对应帮助。"
+    hidden_features = set() if context.event_type.startswith("onebot_") else {"blackjack"}
+    return help_service.answer(f"帮助 {topic}".strip(), hidden_features) or "没有找到对应帮助。"
 
 
 def _summarize_wuwa(value: WuwaToolInput) -> str:

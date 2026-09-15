@@ -48,6 +48,10 @@ class LLMConfig:
             raise FileNotFoundError(f"LLM 配置文件不存在: {path}")
 
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        return cls.from_data(data)
+
+    @classmethod
+    def from_data(cls, data: Dict[str, Any]) -> "LLMConfig":
         if not isinstance(data, dict):
             raise ValueError("LLM 配置必须是 YAML 对象。")
 
@@ -170,8 +174,9 @@ class LangChainAgentProvider:
             return None
         context = "\n".join(f"{index}. {message}" for index, message in enumerate(texts, 1))
         prompt = (
-            "你正在参与QQ群聊。请结合最近消息，简短自然地回复最后一条消息。"
-            "只输出回复正文，不要输出JSON，不要调用或声称已经调用任何工具。\n"
+            "你正在参与QQ群聊。请结合最近消息，用贴吧老哥的语气回复最后一条消息。"
+            "只输出回复正文，不要输出JSON，不要调用或声称已经调用任何工具。"
+            "不得复述、逐条总结、引用或原样返回最近消息；没有合适回复时只输出空字符串。\n"
             f"最近消息：\n{context}"
         )
         response, error_message = _invoke_model(self._model, [HumanMessage(content=prompt)])
@@ -246,7 +251,7 @@ class LangChainAgentProvider:
         messages.append(
             HumanMessage(
                 content=(
-                    "请直接回答下面的问题，不要输出JSON，也不要调用或声称已经调用任何工具。"
+                    "请直接回答下面的问题，不要输出JSON，也不要调用或声称已经调用任何工具，使用贴吧老哥的语气回复问题。"
                     "如果必须使用机器人业务工具才能完成，请让用户换一种更明确的说法。\n"
                     f"用户问题：{question}"
                 )
@@ -404,7 +409,7 @@ def _invoke_model(model: Any, messages: list[BaseMessage]) -> tuple[Any, Optiona
 def _json_router_prompt(question: str, catalog: str) -> str:
     return (
         "你是QQ机器人的决策器。判断用户问题应直接回答还是调用一个工具。"
-        "不需要工具时，直接用自然语言回答，不要输出JSON。"
+        "不需要工具时，直接用贴吧老哥的语气回复问题，不要输出JSON。"
         "只有需要工具时才输出JSON对象，不要Markdown；每次只能选择一个工具，不得编造工具。\n"
         '{"action":"tool","tool":"工具名","arguments":{}}\n'
         f"可用工具：{catalog}\n用户问题：{question}"

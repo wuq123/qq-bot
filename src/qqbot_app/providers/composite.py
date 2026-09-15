@@ -55,7 +55,8 @@ class ChatAnswerProvider(AnswerProvider):
         if note_command is None:
             if looks_like_wuwa_credentials(text):
                 return "鸣潮手机号、验证码和 Token 仅支持私聊固定格式：鸣潮登录：<手机号>、鸣潮验证码：<验证码>、绑定鸣潮Token：<Token>。"
-            help_answer = self._help_service.answer(text) if self._help_service else None
+            hidden_help_features = set() if context.event_type.startswith("onebot_") else {"blackjack"}
+            help_answer = self._help_service.answer(text, hidden_help_features) if self._help_service else None
             if help_answer is not None:
                 return help_answer
             return self._faq_provider.answer(user_id, text, context)

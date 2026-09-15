@@ -37,24 +37,14 @@ python main.py
 ```text
 QQBOT_APP_ID=你的AppID
 QQBOT_APP_SECRET=你的AppSecret
-QQBOT_SANDBOX=true
-QQBOT_FAQ_PATH=config/faq.yaml
-HELP_CONFIG_PATH=config/help.yaml
-NOTE_ROOT=C:\Users\test\Desktop\study\study
-AUTH_CONFIG_PATH=config/auth.yaml
+APP_CONFIG_PATH=config/app.yaml
 BOT_OWNER_USER_IDS=user_id_1,user_id_2
-FEATURE_NAMES_PATH=config/features.yaml
 COC_API_TOKEN=你的部落冲突API Token
-COC_TRANSLATIONS_PATH=config/coc_translations.yaml
-WUWA_DATA_DIR=data/wuwa
-WUWA_TIMEOUT=10
-LLM_CONFIG_PATH=config/llm.yaml
-LLM_API_KEY=你的Spark Lite APIPassword
-ONEBOT_CONFIG_PATH=config/onebot.yaml
+DEEPSEEK_API_KEY=你的DeepSeek API Key
 ONEBOT_ACCESS_TOKEN=你的OneBot访问Token
 ```
 
-沙箱测试阶段保持 `QQBOT_SANDBOX=true`，正式环境改为 `false`。
+非敏感运行参数、路径、功能名、LLM 与 OneBot 设置统一保存在 `config/app.yaml`；`.env` 只保存凭据、Token 与所有者 ID。沙箱测试阶段保持 `config/app.yaml` 中 `bot.sandbox: true`，正式环境改为 `false`。
 
 群聊@机器人时需要切换至正式环境
 
@@ -88,7 +78,7 @@ ONEBOT_ACCESS_TOKEN=你的OneBot访问Token
 
 ## 笔记功能
 
-笔记目录由 `.env` 中的 `NOTE_ROOT` 指定，机器人只会访问该目录下的 Markdown 文件。可识别的 QQ 用户默认是 `user`，可以直接列出和查看笔记；新增、创建、修改和追加共享笔记仅允许“笔记”功能的 `admin` 或全局 `owner`。
+笔记目录由 `config/app.yaml` 的 `paths.note_root` 指定，机器人只会访问该目录下的 Markdown 文件。可识别的 QQ 用户默认是 `user`，可以直接列出和查看笔记；新增、创建、修改和追加共享笔记仅允许“笔记”功能的 `admin` 或全局 `owner`。
 
 新增笔记：
 
@@ -119,7 +109,7 @@ ONEBOT_ACCESS_TOKEN=你的OneBot访问Token
 查看笔记：Git
 ```
 
-查看笔记只读取 `NOTE_ROOT` 目录下的 Markdown 文件；内容较长时会截断显示。
+查看笔记只读取 `paths.note_root` 目录下的 Markdown 文件；内容较长时会截断显示。
 
 ## 部落冲突查询
 
@@ -142,7 +132,7 @@ COC_API_TOKEN=你的部落冲突API Token
 
 玩家标签可以带 `#`，也可以省略 `#`。如果 API 返回 403，请检查 Token 是否正确，以及当前服务器公网 IP 是否在 Clash of Clans 开发者后台的 Token 白名单中。
 
-官方 API 返回的兵种、英雄、法术、装备名称是英文。机器人会读取 `COC_TRANSLATIONS_PATH` 指向的本地翻译表，按中国服常用中文名输出；翻译表未覆盖的新单位会保留英文，补充 `config/coc_translations.yaml` 后重启即可生效。
+官方 API 返回的兵种、英雄、法术、装备名称是英文。机器人会读取 `config/app.yaml` 的 `paths.coc_translations` 指向的本地翻译表，按中国服常用中文名输出；翻译表未覆盖的新单位会保留英文，补充 `config/coc_translations.yaml` 后重启即可生效。
 
 查询建筑剩余时间：
 
@@ -176,11 +166,12 @@ Clash of Clans 官方 API 当前不返回建筑列表、建筑等级或升级结
 
 鸣潮功能使用库街区登录态查询玩家数据，并用本地导入的唤取记录做抽卡分析。鸣潮没有类似 Clash of Clans 的公开开发者 API，不能只靠 UID 查询任意玩家完整私有数据。
 
-`.env` 配置：
+`config/app.yaml` 配置：
 
 ```text
-WUWA_DATA_DIR=data/wuwa
-WUWA_TIMEOUT=10
+paths:
+  wuwa_data_dir: data/wuwa
+  wuwa_timeout: 10
 ```
 
 可识别的 QQ 用户默认可以使用鸣潮登录、绑定、查询、抽卡导入和删除本人绑定；显式设置为该功能 `guest` 的用户会被拒绝。
@@ -209,7 +200,7 @@ WUWA_TIMEOUT=10
 删除鸣潮绑定
 ```
 
-手机号、验证码不会写入本地文件；待输入验证码的进程内登录状态有效期为 10 分钟。Token 会保存到 `WUWA_DATA_DIR` 下的用户目录中，不会在普通回复中展示。第一版是本地明文文件，请只部署在可信机器上。
+手机号、验证码不会写入本地文件；待输入验证码的进程内登录状态有效期为 10 分钟。Token 会保存到 `paths.wuwa_data_dir` 指向目录下的用户目录中，不会在普通回复中展示。第一版是本地明文文件，请只部署在可信机器上。
 
 查询玩家数据：
 
@@ -240,9 +231,7 @@ WUWA_TIMEOUT=10
 首次运行前先在 `.env` 中配置机器人所有者：
 
 ```text
-AUTH_CONFIG_PATH=config/auth.yaml
 BOT_OWNER_USER_IDS=user_id_1,user_id_2
-FEATURE_NAMES_PATH=config/features.yaml
 ```
 
 多个用户 ID 使用英文逗号分隔。机器人从 QQ 消息事件中读取用户 ID/openid；普通 QQ 号通常不是这里要填的值。
@@ -296,7 +285,7 @@ bot debug: event_type=group_at_message user_id=xxx
 @机器人 提升鸣潮权限 @某某
 ```
 
-功能中文名由 `FEATURE_NAMES_PATH` 指向的 YAML 文件维护，默认是 `config/features.yaml`：
+功能中文名由 `config/app.yaml` 的 `features` 分区维护：
 
 ```yaml
 features:
@@ -314,7 +303,7 @@ features:
 
 用户没有显式权限记录时，“查看权限”会显示“默认 user”。
 
-权限会持久化到 `AUTH_CONFIG_PATH` 指向的 YAML 文件，默认是 `config/auth.yaml`：
+权限会持久化到 `config/app.yaml` 的 `paths.auth` 指向的 YAML 文件，默认是 `config/auth.yaml`：
 
 ```yaml
 owners:
@@ -328,34 +317,34 @@ features:
 
 ## OpenAI 兼容 LLM
 
-普通消息会先匹配业务命令和本地 FAQ，只有 FAQ 未命中时才调用 LLM。默认配置使用讯飞星火 Spark Lite；需要先在讯飞开放平台对应模型页面取得 HTTP 服务的 APIPassword，并写入 `.env`：
+普通消息会先匹配业务命令和本地 FAQ，只有 FAQ 未命中时才调用 LLM。默认配置使用 DeepSeek 的 `deepseek-flash`；在 DeepSeek 平台创建 API Key 后写入 `.env`：
 
 ```text
-LLM_CONFIG_PATH=config/llm.yaml
-LLM_API_KEY=你的Spark Lite APIPassword
+DEEPSEEK_API_KEY=你的DeepSeek API Key
 ```
 
-模型配置位于 `config/llm.yaml`：
+模型配置位于 `config/app.yaml` 的 `llm` 分区：
 
 ```yaml
-enabled: true
-base_url: https://spark-api-open.xf-yun.com/v1
-api_key_env: LLM_API_KEY
-model: lite
-context_rounds: 5
-timeout: 30
-max_tokens: 1024
-temperature: 1.0
-tool_call_mode: json
-max_tool_iterations: 3
-confirmation_ttl_seconds: 120
+llm:
+  enabled: true
+  base_url: https://api.deepseek.com
+  api_key_env: DEEPSEEK_API_KEY
+  model: deepseek-flash
+  context_rounds: 5
+  timeout: 30
+  max_tokens: 1024
+  temperature: 1.0
+  tool_call_mode: json
+  max_tool_iterations: 3
+  confirmation_ttl_seconds: 120
 ```
 
 - `enabled` 控制是否启用 LLM。关闭时继续使用 FAQ 的原兜底回答。
 - `api_key_env` 是保存 API Key 的环境变量名，密钥本身不要写入 YAML。
 - `context_rounds` 是每位用户在当前进程内保留的对话轮数；设为 `0` 表示单轮问答，重启机器人后历史会清空。
 - `base_url` 和 `model` 可替换为其他支持 OpenAI Chat Completions 的服务配置，无需修改代码。
-- `tool_call_mode` 可设为 `json` 或 `native`。Spark Lite 使用 `json`；更换为支持 Function Call 的模型后可改为 `native`。
+- `tool_call_mode` 可设为 `json` 或 `native`。默认的 DeepSeek 模型支持工具调用；如需使用原生 Function Call，可改为 `native`。
 - `max_tool_iterations` 限制每次问答最多调用多少个工具，`confirmation_ttl_seconds` 控制待确认操作的有效时间。
 
 FAQ 未命中后，LangChain Agent 会判断是直接回答，还是调用笔记、部落冲突、鸣潮、权限或帮助工具。查询结果为文本时会交给模型整理；图片和按钮等富消息会直接回复。
@@ -376,25 +365,41 @@ QQ 官方群消息事件只包含 @ 机器人的消息。如需从未 @ 的普�
 在 `.env` 配置：
 
 ```text
-ONEBOT_CONFIG_PATH=config/onebot.yaml
 ONEBOT_ACCESS_TOKEN=你的OneBot访问Token
 ```
 
-默认 `config/onebot.yaml`：
+默认 `config/app.yaml` 的 `onebot` 分区：
 
 ```yaml
-enabled: false
-ws_url: ws://127.0.0.1:3001
-access_token_env: ONEBOT_ACCESS_TOKEN
-reply_probability: 0.2
-context_messages: 5
-max_message_chars: 500
-reconnect_delay: 5
+onebot:
+  enabled: true
+  ws_url: ws://127.0.0.1:3001
+  access_token_env: ONEBOT_ACCESS_TOKEN
+  reply_probability: 0.02
+  context_messages: 5
+  max_message_chars: 500
+  reconnect_delay: 5
+  startup_timeout_seconds: 10
+  failover_after_failures: 3
+  reply_cooldown_seconds: 30
+  max_reply_chars: 200
 ```
 
-配置好网关地址和 Token 后，将 `enabled` 改为 `true`。机器人会忽略自身消息和 @ 机器人的消息，对每条未 @ 的普通群文本独立以 20% 概率调用 LLM；这是长期平均每五条回复一次，并不保证任意连续五条恰好回复一次。
+配置好网关地址和 Token 后，将 `enabled` 改为 `true`。NapCat 是主消息入口：私聊和 @NapCat 的群消息会执行全部业务命令、帮助、FAQ 和 LLM；@其他账号的群消息会忽略，避免与官方机器人重复回复。未 @ 的普通群文本独立以 2% 概率调用 LLM；这是长期平均每五十条回复一次，并不保证任意连续五十条恰好回复一次。
 
-抽中时会把该群最近 `context_messages` 条未 @ 文本发送给已配置的外部 LLM，群之间隔离，重启后清空。消息不会携带 QQ 用户 ID 或昵称，单条会按 `max_message_chars` 截断；手机号、验证码和鸣潮 Token 等敏感消息不会进入上下文。随机群聊回复只生成普通文本，不调用 Agent 工具。现有 @ 命令、帮助、FAQ 和 Agent 仍由官方 botpy 处理。
+抽中时会把该群最近 `context_messages` 条未 @ 文本发送给已配置的外部 LLM，群之间隔离，重启后清空。消息不会携带 QQ 用户 ID 或昵称，单条会按 `max_message_chars` 截断；手机号、验证码和鸣潮 Token 等敏感消息不会进入上下文。随机群聊回复只生成普通文本，不调用 Agent 工具。同一群生成回复时不会重复调用，发送成功后会等待 `reply_cooldown_seconds` 秒；回复超过 `max_reply_chars`、或复述上下文时会被丢弃。
+
+官方 botpy 机器人会继续运行：用户 @官方机器人账号时仍可获得原有 Markdown 按钮帮助。NapCat 与官方机器人是两个 QQ 身份；NapCat 连续 `failover_after_failures` 次重连失败后，会记录切换到 botpy 备用状态。官方 botpy 无法接收未 @ 的普通群消息，因此故障期间随机群聊回复会暂停，改为 @官方机器人使用功能。
+
+NapCat 安装在项目上层目录 `F:\agent\NapCatQQ`。不要直接双击窗口后关闭，使用 [start-napcat.cmd](F:/agent/NapCatQQ/start-napcat.cmd) 启动；失败日志会保留在 `F:\agent\NapCatQQ\logs\startup.log`。
+
+## 21 点文字游戏
+
+21 点仅通过 OneBot 11 / NapCat 提供，不接入官方 `qq-botpy`。私聊发送 `21点` 或 `21点 下注：10` 开始一局；群聊需 @NapCat 后发送该命令，牌局开始后发送操作命令无需再 @。下注仅用于本局虚拟盈亏展示，不保存余额或涉及真实货币。
+
+初始两张牌中 A 与任意 10 点牌构成 Blackjack，赔付为 3:2。庄家发一张明牌与一张暗牌：明牌为 10 点时会立即检查 Blackjack；明牌为 A 时可发送 `买保险` 或 `不买保险`。保险金额为初始下注的一半，庄家拥有 Blackjack 时净赔付为保险下注的两倍。
+
+正常回合可发送 `要牌`、`停牌`、`加倍`、`分牌`、`投降` 或 `结束21点`。加倍会使本手下注翻倍、仅再发一张牌并自动停牌；两张相同牌可分成两手；首手未要牌时可以投降并损失一半下注。A 自动按不爆牌时的最大点数计算，庄家点数低于 17 时必须要牌、软 17 停牌。同一群或私聊会话仅保留一局，群聊中只有开局玩家可以操作。
 
 ## 测试
 

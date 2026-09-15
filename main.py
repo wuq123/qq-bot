@@ -15,7 +15,7 @@ from qqbot_app.auth_service import AuthService, FeatureNames
 from qqbot_app.bot_client import QQQuestionAnswerBot
 from qqbot_app.config import BotConfig
 from qqbot_app.help_service import HelpService
-from qqbot_app.onebot_client import OneBotConfig, OneBotGroupChatClient
+from qqbot_app.onebot_client import OneBotBotClient, OneBotConfig
 from qqbot_app.providers import ChatAnswerProvider, LangChainAgentProvider, LLMConfig
 from qqbot_app.qa_service import FaqAnswerProvider
 
@@ -33,23 +33,41 @@ def create_intents() -> botpy.Intents:
 
 def create_onebot_client(
     config: OneBotConfig,
+    provider: ChatAnswerProvider,
     llm_provider: LangChainAgentProvider | None,
-) -> OneBotGroupChatClient | None:
+) -> OneBotBotClient | None:
     if not config.enabled:
-        return None
-    if llm_provider is None:
-        logger.warning("OneBot random replies are enabled but LLM is unavailable")
         return None
     access_token = os.getenv(config.access_token_env, "").strip()
     if not access_token:
         logger.warning("OneBot access token environment variable is empty: %s", config.access_token_env)
         return None
-    return OneBotGroupChatClient(config, access_token, llm_provider)
+    if llm_provider is None:
+        logger.warning("OneBot random LLM replies are disabled because LLM is unavailable")
+    return OneBotBotClient(
+        config,
+        access_token,
+        provider,
+        llm_provider or _NoGroupResponder(),
+        state_changed=_log_onebot_state,
+    )
+
+
+class _NoGroupResponder:
+    def answer_group(self, messages: list[str]) -> None:
+        return None
+
+
+def _log_onebot_state(mode: str) -> None:
+    if mode == "napcat":
+        logger.info("NapCat is the primary message entry")
+    else:
+        logger.warning("NapCat is unavailable; botpy remains the fallback entry")
 
 
 async def run_clients(
     client: QQQuestionAnswerBot,
-    onebot_client: OneBotGroupChatClient,
+    onebot_client: OneBotBotClient,
     app_id: str,
     app_secret: str,
 ) -> None:
@@ -81,7 +99,7 @@ def main() -> None:
         flush=True,
     )
     help_service = HelpService.from_file(Path(config.help_path))
-    feature_names = FeatureNames.from_file(Path(config.feature_names_path))
+    feature_names = FeatureNames.from_data(config.feature_names)
     auth_service = AuthService(Path(config.auth_config_path), config.bot_owner_user_ids, feature_names)
     actions = BotActionService(
         note_root=config.note_root,
@@ -91,8 +109,8 @@ def main() -> None:
         wuwa_data_dir=config.wuwa_data_dir,
         wuwa_timeout=config.wuwa_timeout,
     )
-    llm_config = LLMConfig.from_file(Path(config.llm_config_path))
-    onebot_config = OneBotConfig.from_file(Path(config.onebot_config_path))
+    llm_config = LLMConfig.from_data(config.llm)
+    onebot_config = OneBotConfig.from_data(config.onebot)
     llm_provider = None
     if llm_config.enabled:
         api_key = os.getenv(llm_config.api_key_env, "").strip()
@@ -117,7 +135,7 @@ def main() -> None:
         action_service=actions,
     )
     client = QQQuestionAnswerBot(provider, intents=intents, is_sandbox=config.sandbox)
-    onebot_client = create_onebot_client(onebot_config, llm_provider)
+    onebot_client = create_onebot_client(onebot_config, provider, llm_provider)
     if onebot_client is None:
         client.run(appid=config.app_id, secret=config.app_secret)
     else:

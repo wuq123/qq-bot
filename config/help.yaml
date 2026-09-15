@@ -1,4 +1,6 @@
+# 帮助菜单总标题。
 title: "功能帮助"
+# 功能帮助列表：key 为内部标识，title 为显示名称，aliases 为可识别别名。
 features:
   - key: "notes"
     title: "笔记"
@@ -155,3 +157,37 @@ features:
         command: "身份权限"
       - label: "设置权限"
         command: "如何设置权限"
+  - key: "blackjack"
+    title: "21点"
+    aliases:
+      - "21 点"
+      - "blackjack"
+    summary: "通过 OneBot 11 / NapCat 与庄家进行纯文字 21 点游戏，支持保险、加倍、分牌和投降。"
+    requirements:
+      - "仅支持 OneBot 11 / NapCat；群聊需 @NapCat 开局，开局后操作命令无需 @。"
+      - "庄家点数小于 17 时必须继续要牌。"
+      - "下注与赔付仅用于本局虚拟计分，不保存余额或涉及真实货币。"
+    commands:
+      - "21点"
+      - "21点 下注：10"
+      - "要牌"
+      - "停牌"
+      - "加倍"
+      - "分牌"
+      - "投降"
+      - "买保险"
+      - "不买保险"
+      - "结束21点"
+    buttons:
+      - label: "开始"
+        command: "21点"
+      - label: "要牌"
+        command: "要牌"
+      - label: "停牌"
+        command: "停牌"
+      - label: "加倍"
+        command: "加倍"
+      - label: "分牌"
+        command: "分牌"
+      - label: "结束"
+        command: "结束21点"

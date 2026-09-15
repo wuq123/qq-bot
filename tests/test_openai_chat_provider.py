@@ -195,6 +195,7 @@ def test_group_answer_uses_only_supplied_text_without_agent_history() -> None:
     assert "private-user" not in prompt
     assert "私聊问题" not in prompt
     assert "不要调用" in prompt
+    assert "不得复述" in prompt
 
 
 def test_group_answer_silently_rejects_errors_empty_and_tool_json() -> None:

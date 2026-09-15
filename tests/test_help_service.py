@@ -104,6 +104,13 @@ def test_help_ignores_non_help_text() -> None:
     assert HelpService.from_file(Path("config/help.yaml")).answer("笔记列表") is None
 
 
+def test_help_can_hide_onebot_only_feature() -> None:
+    answer = HelpService.from_file(Path("config/help.yaml")).answer("帮助", {"blackjack"})
+
+    assert answer is not None
+    assert "21点" not in answer.content
+
+
 def test_missing_help_file_has_clear_error() -> None:
     with pytest.raises(FileNotFoundError, match="帮助配置文件不存在"):
         HelpService.from_file(Path("config/missing-help.yaml"))

@@ -28,8 +28,13 @@ class FeatureNames:
         if not path.exists():
             return cls({})
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        features = data.get("features", {}) or {}
-        return cls({str(feature): str(display_name) for feature, display_name in features.items()})
+        return cls.from_data(data.get("features", {}) or {})
+
+    @classmethod
+    def from_data(cls, data: Dict[str, object]) -> "FeatureNames":
+        if not isinstance(data, dict):
+            raise ValueError("功能名称配置必须是 YAML 对象。")
+        return cls({str(feature): str(display_name) for feature, display_name in data.items()})
 
     def resolve(self, value: str) -> str:
         text = value.strip()

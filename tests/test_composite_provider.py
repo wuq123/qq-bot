@@ -125,6 +125,23 @@ def test_non_note_message_falls_back_to_faq(tmp_path: Path) -> None:
     assert answer == "功能回答"
 
 
+def test_blackjack_command_is_not_available_from_shared_provider(tmp_path: Path) -> None:
+    provider = _provider_with_auth(tmp_path, AuthService(tmp_path / "auth.yaml"))
+
+    answer = provider.answer("u1", "21点", _context())
+
+    assert answer == "兜底回答"
+
+
+def test_blackjack_help_is_hidden_outside_onebot(tmp_path: Path) -> None:
+    provider = _provider_with_help(tmp_path, AuthService(tmp_path / "auth.yaml"))
+
+    answer = provider.answer("u1", "帮助", _context())
+
+    assert isinstance(answer, BotMessage)
+    assert "21点" not in answer.content
+
+
 def test_help_command_returns_rich_message(tmp_path: Path) -> None:
     provider = _provider_with_help(tmp_path, AuthService(tmp_path / "auth.yaml"))
 

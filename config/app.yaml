@@ -1,0 +1,77 @@
+# 机器人基础配置；密钥、Token 与所有者 ID 请填写在项目根目录 .env 中。
+bot:
+  # 是否使用 QQ 开放平台沙箱环境；正式部署时改为 false。
+  sandbox: false
+
+paths:
+  # 本地 FAQ、帮助菜单、权限数据和部落冲突翻译表的位置。
+  faq: config/faq.yaml
+  help: config/help.yaml
+  auth: config/auth.yaml
+  coc_translations: config/coc_translations.yaml
+  # 笔记目录；留空时禁用笔记读写，请按部署机器实际路径修改。
+  note_root: 'C:\Users\test\Desktop\study\study'
+  # 鸣潮用户绑定、抽卡记录和缓存的本地目录。
+  wuwa_data_dir: data/wuwa
+  # 鸣潮接口请求超时时间，单位为秒。
+  wuwa_timeout: 10
+
+# QQ 会话中显示的功能名称。
+features:
+  notes: 笔记
+  clash: 部落冲突
+  wuwa: 鸣潮
+
+# OpenAI Chat Completions 兼容的 LLM 配置；api_key_env 指向 .env 中的密钥变量名。
+llm:
+  # 原星火 Spark Lite 配置（切回时取消注释并替换下方 DeepSeek 配置）。
+  # base_url: https://spark-api-open.xf-yun.com/v1
+  # api_key_env: LLM_API_KEY
+  # model: lite
+  # 是否启用 FAQ 未命中后的 LLM 兜底与 Agent 工具调用。
+  enabled: true
+  # DeepSeek 官方 OpenAI 兼容接口地址。
+  base_url: https://api.deepseek.com
+  # 保存 DeepSeek API Key 的环境变量名，密钥本身不要写入此文件。
+  api_key_env: DEEPSEEK_API_KEY
+  # DeepSeek 稳定模型别名，当前对应 DeepSeek-V4.1-Flash。
+  model: deepseek-flash
+  # 每位用户保留的上下文轮数，0 表示不保留。
+  context_rounds: 5
+  # 单次模型请求超时时间，单位为秒。
+  timeout: 30
+  # 单次模型回复的最大 token 数。
+  max_tokens: 1024
+  # 采样温度，范围为 0 到 2。
+  temperature: 0.7
+  # 工具调用协议：json 或 native。
+  tool_call_mode: json
+  # 单次问答允许的最大工具调用次数。
+  max_tool_iterations: 3
+  # 写入、授权等操作的确认有效期，单位为秒。
+  confirmation_ttl_seconds: 120
+
+# OneBot 11 / NapCat 配置；access_token_env 指向 .env 中的访问令牌变量名。
+onebot:
+  # 是否启用 OneBot 消息入口与未 @ 群消息随机回复。
+  enabled: true
+  # OneBot 正向 WebSocket 地址。
+  ws_url: ws://127.0.0.1:3001
+  # 保存 OneBot 访问令牌的环境变量名。
+  access_token_env: ONEBOT_ACCESS_TOKEN
+  # 每条未 @ 群消息触发 LLM 回复的概率，0.02 即 2%。
+  reply_probability: 0.02
+  # 每个群提供给 LLM 的最近未 @ 消息数量。
+  context_messages: 5
+  # 单条进入上下文的最大字符数。
+  max_message_chars: 500
+  # WebSocket 断开后的重连等待时间，单位为秒。
+  reconnect_delay: 5
+  # 建连超时时间，单位为秒。
+  startup_timeout_seconds: 10
+  # 连续失败达到此次数后记录为 botpy 备用状态。
+  failover_after_failures: 3
+  # 同一群发送成功后的随机回复冷却时间，单位为秒。
+  reply_cooldown_seconds: 30
+  # 随机群聊回复的最大字符数。
+  max_reply_chars: 200

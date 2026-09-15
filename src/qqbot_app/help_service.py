@@ -33,31 +33,32 @@ class HelpService:
         features = [_parse_feature(item) for item in data.get("features", [])]
         return cls(features=features, title=str(data.get("title", "功能帮助")).strip() or "功能帮助")
 
-    def answer(self, text: str) -> Optional[BotMessage]:
+    def answer(self, text: str, excluded_feature_keys: set[str] | None = None) -> Optional[BotMessage]:
         value = _normalize_help_text(text)
         if value.lower() not in {"帮助", "help", "/help"} and not value.startswith("帮助 "):
             return None
+        features = [feature for feature in self._features if feature.key not in (excluded_feature_keys or set())]
 
         topic = value[3:].strip() if value.startswith("帮助 ") else ""
         if not topic or topic.lower() in {"help", "/help"}:
-            return self._feature_list_message()
+            return self._feature_list_message(features)
 
-        feature = self._find_feature(topic)
+        feature = self._find_feature(topic, features)
         if feature is None:
-            return self._unknown_feature_message(topic)
+            return self._unknown_feature_message(topic, features)
         return self._feature_detail_message(feature)
 
-    def _feature_list_message(self) -> BotMessage:
+    def _feature_list_message(self, features: List[HelpFeature]) -> BotMessage:
         lines = [self._title, "点击下方功能按钮查看用法；也可以直接输入："]
-        lines.extend(f"- 帮助 {feature.title}" for feature in self._features)
+        lines.extend(f"- 帮助 {feature.title}" for feature in features)
         content = "\n".join(lines)
-        buttons = [{"label": feature.title, "command": f"帮助 {feature.title}"} for feature in self._features]
+        buttons = [{"label": feature.title, "command": f"帮助 {feature.title}"} for feature in features]
         return _rich_message(content, buttons)
 
-    def _unknown_feature_message(self, topic: str) -> BotMessage:
-        names = "、".join(feature.title for feature in self._features) or "暂无"
+    def _unknown_feature_message(self, topic: str, features: List[HelpFeature]) -> BotMessage:
+        names = "、".join(feature.title for feature in features) or "暂无"
         content = f"没有找到“{topic}”的帮助。\n可用功能：{names}\n发送：帮助 <功能名>"
-        buttons = [{"label": feature.title, "command": f"帮助 {feature.title}"} for feature in self._features]
+        buttons = [{"label": feature.title, "command": f"帮助 {feature.title}"} for feature in features]
         return _rich_message(content, buttons)
 
     def _feature_detail_message(self, feature: HelpFeature) -> BotMessage:
@@ -71,9 +72,9 @@ class HelpService:
         buttons = feature.buttons or [{"label": command, "command": command} for command in feature.commands[:5]]
         return _rich_message("\n".join(lines), buttons)
 
-    def _find_feature(self, topic: str) -> Optional[HelpFeature]:
+    def _find_feature(self, topic: str, features: List[HelpFeature]) -> Optional[HelpFeature]:
         target = topic.strip().lower()
-        for feature in self._features:
+        for feature in features:
             names = [feature.key, feature.title, *feature.aliases]
             if target in {str(name).strip().lower() for name in names}:
                 return feature
